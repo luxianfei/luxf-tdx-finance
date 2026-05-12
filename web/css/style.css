@@ -211,6 +211,61 @@ body {
     appearance: none;
 }
 
+/* 彻底移除所有浏览器默认的输入框装饰 */
+.search-box input::-webkit-search-cancel-button,
+.search-box input::-webkit-search-decoration,
+.search-box input::-webkit-search-results-button,
+.search-box input::-webkit-search-results-decoration,
+.search-box input::-webkit-textfield-decoration-container {
+    -webkit-appearance: none;
+    display: none;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.search-box input::-moz-search-cancel-button,
+.search-box input::-moz-search-decoration,
+.search-box input::-moz-search-results-button,
+.search-box input::-moz-search-results-decoration {
+    display: none;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+}
+
+/* 确保输入框内部没有额外的元素 */
+.search-box input {
+    padding-right: 16px !important;
+}
+
+/* 移除外部插件或扩展添加的干扰元素 */
+.Pfosts,
+.tosan,
+.Pfosts.tosan,
+div.Pfosts,
+div.tosan,
+div.Pfosts.tosan,
+.search-box .Pfosts,
+.search-box .tosan,
+.search-box > div:not(:first-child):not(:last-child),
+.search-box > div[class*="Pfosts"],
+.search-box > div[class*="tosan"],
+.header-center .Pfosts,
+.header-center .tosan,
+.header-center > div > div:not(:first-child):not(:last-child) {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    pointer-events: none !important;
+    z-index: -9999 !important;
+}
+
 /* 移除所有可能的输入框装饰 */
 .search-box input::-webkit-outer-spin-button,
 .search-box input::-webkit-inner-spin-button {
