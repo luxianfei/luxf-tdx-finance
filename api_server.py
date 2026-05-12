@@ -782,24 +782,24 @@ def get_my_stocks():
         db_client = MySQLClient(MYSQL_CONFIG)
         
         sql = """
-            SELECT code, name, pool_type, notes, created_at 
-            FROM my_stocks 
-            ORDER BY pool_type, created_at DESC
+            SELECT code, name, pool_type, notes, added_at 
+            FROM my_stock 
+            ORDER BY pool_type, added_at DESC
         """
         results = db_client.query_all(sql)
         
         stocks = []
         for row in results:
-            created_at = row['created_at']
-            if created_at:
-                created_at = created_at.strftime('%Y-%m-%d %H:%M')
+            added_at = row['added_at']
+            if added_at:
+                added_at = added_at.strftime('%Y-%m-%d %H:%M')
             
             stocks.append({
                 'code': row['code'],
                 'name': row['name'],
                 'pool_type': row['pool_type'],
                 'notes': row.get('notes', ''),
-                'created_at': created_at
+                'created_at': added_at
             })
         
         db_client.close()
@@ -820,7 +820,7 @@ def add_my_stock(code):
         db_client = MySQLClient(MYSQL_CONFIG)
         
         sql = """
-            INSERT INTO my_stocks (code, name, pool_type, notes, created_at)
+            INSERT INTO my_stock (code, name, pool_type, notes, added_at)
             VALUES (%s, %s, %s, %s, NOW())
             ON DUPLICATE KEY UPDATE
             name = VALUES(name), pool_type = VALUES(pool_type), 
@@ -840,14 +840,38 @@ def delete_my_stock(code):
     try:
         db_client = MySQLClient(MYSQL_CONFIG)
         
-        sql = "DELETE FROM my_stocks WHERE code = %s"
-        db_client.execute(sql, (code,))
-        db_client.commit()
+        pool_type = request.args.get('pool_type', None)
         
+        if pool_type:
+            sql = "DELETE FROM my_stock WHERE code = %s AND pool_type = %s"
+            db_client.execute(sql, (code, pool_type))
+        else:
+            sql = "DELETE FROM my_stock WHERE code = %s"
+            db_client.execute(sql, (code,))
+        
+        db_client.commit()
         db_client.close()
         return jsonify({'success': True, 'message': '删除成功', 'data': None})
     except Exception as e:
         logger.error(f"删除自选股失败: {e}")
+        return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
+@app.route('/api/my_stock/<code>/move', methods=['PUT'])
+def move_my_stock(code):
+    try:
+        data = request.get_json()
+        to_pool = data.get('to_pool', 'watch')
+        
+        db_client = MySQLClient(MYSQL_CONFIG)
+        
+        sql = "UPDATE my_stock SET pool_type = %s WHERE code = %s"
+        db_client.execute(sql, (to_pool, code))
+        db_client.commit()
+        
+        db_client.close()
+        return jsonify({'success': True, 'message': '移动成功', 'data': None})
+    except Exception as e:
+        logger.error(f"移动自选股失败: {e}")
         return jsonify({'success': False, 'message': str(e), 'data': None}), 500
 
 # ============================================================
@@ -900,7 +924,7 @@ def get_report_dates():
 
 @app.route('/')
 def index():
-    return send_from_directory('web', 'stock_filter.html')
+    return send_from_directory('web', 'index.html')
 
 @app.route('/<path:path>')
 def static_files(path):
