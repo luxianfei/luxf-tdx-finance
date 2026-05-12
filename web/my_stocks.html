@@ -40,6 +40,9 @@
         <section class="stock-info-card">
             <div class="section-header">
                 <h2><i class="fas fa-star"></i> 自选股管理</h2>
+                <button class="refresh-hudong-btn" onclick="refreshAllHudongData()" title="刷新所有自选股的互动问答数据">
+                    <i class="fas fa-comments"></i> 刷新互动数据
+                </button>
             </div>
             
             <!-- 池类型切换 -->
@@ -351,6 +354,60 @@
                 console.error('添加失败:', error);
                 alert('添加失败，请稍后重试');
             }
+        }
+
+        // 刷新所有自选股的互动问答数据
+        async function refreshAllHudongData() {
+            const response = await fetch(`${API_BASE_URL}/api/my_stocks`);
+            const result = await response.json();
+            
+            if (!result.success || !result.data) {
+                alert('获取自选股列表失败');
+                return;
+            }
+            
+            const stocks = result.data.stocks || [];
+            if (stocks.length === 0) {
+                alert('自选股列表为空');
+                return;
+            }
+            
+            const btn = document.querySelector('.refresh-hudong-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 刷新中...';
+            btn.disabled = true;
+            
+            let successCount = 0;
+            let failCount = 0;
+            const total = stocks.length;
+            
+            // 逐个刷新，避免并发请求过多
+            for (let i = 0; i < stocks.length; i++) {
+                const stock = stocks[i];
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/stock/${stock.code}/qa/fetch`, {
+                        method: 'POST'
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch (error) {
+                    failCount++;
+                }
+                
+                // 更新按钮显示进度
+                btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 刷新中 ${i + 1}/${total}`;
+            }
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            
+            alert(`刷新完成！\n成功: ${successCount} 只\n失败: ${failCount} 只`);
         }
 
         // 页面加载时获取自选股列表

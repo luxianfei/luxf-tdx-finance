@@ -70,6 +70,14 @@ class MySQLClient:
         with conn.cursor() as cursor:
             return cursor.execute(sql, params)
 
+    def executemany(self, sql: str, params_list: List[tuple]) -> int:
+        """批量执行 SQL（增删改），返回总影响行数"""
+        if not params_list:
+            return 0
+        conn = self.connect()
+        with conn.cursor() as cursor:
+            return cursor.executemany(sql, params_list)
+
     def query_one(self, sql: str, params: tuple = None) -> Optional[Dict]:
         """查询单条记录"""
         conn = self.connect()
@@ -570,3 +578,198 @@ class MySQLClient:
         ORDER BY year ASC
         """
         return self.query_all(sql, (code,))
+
+    # ============================================================
+    # 互动问答操作
+    # ============================================================
+
+    def insert_stock_qa(self, data: Dict) -> bool:
+        """
+        插入单条互动问答数据（INSERT OR UPDATE）
+
+        Args:
+            data: 问答数据字典
+
+        Returns:
+            bool: 是否成功
+        """
+        sql = """
+        INSERT INTO stock_qa (
+            code, ask_user, ask_time, answer_time,
+            question, answer, status, source_id
+        ) VALUES (
+            %(code)s, %(ask_user)s, %(ask_time)s, %(answer_time)s,
+            %(question)s, %(answer)s, %(status)s, %(source_id)s
+        )
+        ON DUPLICATE KEY UPDATE
+            ask_user = VALUES(ask_user),
+            ask_time = VALUES(ask_time),
+            answer_time = VALUES(answer_time),
+            question = VALUES(question),
+            answer = VALUES(answer),
+            status = VALUES(status)
+        """
+        try:
+            conn = self.connect()
+            with conn.cursor() as cursor:
+                cursor.execute(sql, data)
+            self.commit()
+            return True
+        except Exception as e:
+            logger.error(f"插入互动问答失败: {e}")
+            self.rollback()
+            return False
+
+    def batch_insert_stock_qa(self, data_list: List[Dict]) -> int:
+        """
+        批量插入互动问答数据
+
+        Args:
+            data_list: 问答数据列表
+
+        Returns:
+            int: 成功插入的行数
+        """
+        if not data_list:
+            return 0
+
+        sql = """
+        INSERT INTO stock_qa (
+            code, ask_user, ask_time, answer_time,
+            question, answer, status, source_id
+        ) VALUES (
+            %(code)s, %(ask_user)s, %(ask_time)s, %(answer_time)s,
+            %(question)s, %(answer)s, %(status)s, %(source_id)s
+        )
+        ON DUPLICATE KEY UPDATE
+            ask_user = VALUES(ask_user),
+            ask_time = VALUES(ask_time),
+            answer_time = VALUES(answer_time),
+            question = VALUES(question),
+            answer = VALUES(answer),
+            status = VALUES(status)
+        """
+        try:
+            conn = self.connect()
+            with conn.cursor() as cursor:
+                cursor.executemany(sql, data_list)
+            self.commit()
+            return len(data_list)
+        except Exception as e:
+            logger.error(f"批量插入互动问答失败: {e}")
+            self.rollback()
+            return 0
+
+    def get_stock_qa(self, code: str, limit: int = 20, offset: int = 0) -> List[Dict]:
+        """
+        获取股票互动问答数据（支持分页）
+
+        Args:
+            code: 股票代码
+            limit: 返回记录数
+            offset: 偏移量
+
+        Returns:
+            List[Dict]: 问答数据列表，按回答时间倒序排列
+        """
+        sql = """
+        SELECT * FROM stock_qa
+        WHERE code = %s
+        ORDER BY answer_time DESC, ask_time DESC
+        LIMIT %s OFFSET %s
+        """
+        return self.query_all(sql, (code, limit, offset))
+
+    def search_stock_qa(self, code: str, keyword: str, limit: int = 20, offset: int = 0) -> List[Dict]:
+        """
+        搜索股票互动问答数据（支持分页）
+
+        Args:
+            code: 股票代码
+            keyword: 搜索关键字
+            limit: 返回记录数
+            offset: 偏移量
+
+        Returns:
+            List[Dict]: 匹配的问答数据列表，按回答时间倒序排列
+        """
+        sql = """
+        SELECT * FROM stock_qa
+        WHERE code = %s AND (question LIKE %s OR answer LIKE %s)
+        ORDER BY answer_time DESC, ask_time DESC
+        LIMIT %s OFFSET %s
+        """
+        pattern = f"%{keyword}%"
+        return self.query_all(sql, (code, pattern, pattern, limit, offset))
+
+    def get_latest_answer_time(self, code: str) -> str:
+        """
+        获取最新的回答时间（用于增量更新）
+
+        Args:
+            code: 股票代码
+
+        Returns:
+            str: 最新回答时间字符串
+        """
+        sql = """
+        SELECT MAX(answer_time) as latest_time FROM stock_qa
+        WHERE code = %s AND answer_time IS NOT NULL
+        """
+        result = self.query_one(sql, (code,))
+        return result["latest_time"] if result and result["latest_time"] else None
+
+    def get_qa_search_count(self, code: str, keyword: str) -> int:
+        """
+        获取搜索结果总数
+
+        Args:
+            code: 股票代码
+            keyword: 搜索关键字
+
+        Returns:
+            int: 匹配的记录数
+        """
+        sql = """
+        SELECT COUNT(*) FROM stock_qa
+        WHERE code = %s AND (question LIKE %s OR answer LIKE %s)
+        """
+        pattern = f"%{keyword}%"
+        result = self.query_one(sql, (code, pattern, pattern))
+        return result["COUNT(*)"] if result else 0
+
+    def get_qa_count(self, code: str) -> int:
+        """
+        获取股票问答数量
+
+        Args:
+            code: 股票代码
+
+        Returns:
+            int: 问答数量
+        """
+        sql = "SELECT COUNT(*) FROM stock_qa WHERE code = %s"
+        result = self.query_one(sql, (code,))
+        return result["COUNT(*)"] if result else 0
+
+    def delete_stock_qa(self, code: str) -> int:
+        """
+        删除股票的所有问答数据
+
+        Args:
+            code: 股票代码
+
+        Returns:
+            int: 删除的行数
+        """
+        sql = "DELETE FROM stock_qa WHERE code = %s"
+        try:
+            conn = self.connect()
+            with conn.cursor() as cursor:
+                cursor.execute(sql, (code,))
+            self.commit()
+            return cursor.rowcount
+        except Exception as e:
+            logger.error(f"删除互动问答失败: {e}")
+            self.rollback()
+            return 0

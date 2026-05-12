@@ -201,6 +201,9 @@ async function loadStockData(code) {
             console.error('加载数据失败:', result.message);
             alert('加载数据失败: ' + result.message);
         }
+        
+        // 加载互动问答数据（不阻塞其他加载）
+        loadQAData(code);
     } catch (error) {
         console.error('请求失败:', error);
         alert('请求失败，请检查网络连接');
@@ -727,4 +730,248 @@ function exportData() {
     link.href = URL.createObjectURL(blob);
     link.download = `stock_${currentData[0].code}_metrics.csv`;
     link.click();
+}
+
+// 全局变量存储当前分页和搜索状态
+let currentQAPage = 1;
+let currentQAKeyword = '';
+
+/**
+ * 加载互动问答数据（支持分页和搜索）
+ */
+async function loadQAData(code, page = 1, keyword = '') {
+    if (!code) {
+        // 从URL获取股票代码
+        const urlParams = new URLSearchParams(window.location.search);
+        code = urlParams.get('code') || '688456';
+    }
+    
+    // 保存当前状态
+    currentQAPage = page;
+    currentQAKeyword = keyword;
+    
+    const container = document.getElementById('qaContainer');
+    container.innerHTML = '<div class="loading-text">加载中...</div>';
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/stock/${code}/qa?limit=20&page=${page}&keyword=${encodeURIComponent(keyword)}`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            renderQAData(result.data.qa_list, keyword);
+            renderPagination(result.data);
+        } else {
+            container.innerHTML = '<div class="empty-state">暂无互动问答数据</div>';
+            document.getElementById('qaPagination').innerHTML = '';
+        }
+    } catch (error) {
+        console.error('加载互动问答数据失败:', error);
+        container.innerHTML = '<div class="empty-state">加载失败，请稍后重试</div>';
+        document.getElementById('qaPagination').innerHTML = '';
+    }
+}
+
+/**
+ * 搜索互动问答
+ */
+function searchQA() {
+    const keyword = document.getElementById('qaSearchInput').value.trim();
+    loadQAData(null, 1, keyword);
+}
+
+/**
+ * 刷新互动问答数据（增量更新）
+ */
+async function refreshQAData() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code') || '688456';
+    
+    const refreshBtn = document.querySelector('.refresh-btn');
+    const originalText = refreshBtn.innerHTML;
+    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 刷新中...';
+    refreshBtn.disabled = true;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/stock/${code}/qa/fetch`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message);
+            // 重新加载数据
+            loadQAData(code, 1, currentQAKeyword);
+        } else {
+            alert('刷新失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('刷新失败:', error);
+        alert('刷新失败，请稍后重试');
+    } finally {
+        refreshBtn.innerHTML = originalText;
+        refreshBtn.disabled = false;
+    }
+}
+
+/**
+ * 高亮显示关键字
+ */
+function highlightKeyword(text, keyword) {
+    if (!keyword || !text) {
+        return text || '';
+    }
+    
+    const regex = new RegExp(`(${keyword})`, 'gi');
+    return text.replace(regex, '<span class="highlight">$1</span>');
+}
+
+/**
+ * 渲染互动问答数据（支持关键字高亮）
+ */
+function renderQAData(qaList, keyword = '') {
+    const container = document.getElementById('qaContainer');
+    
+    if (!qaList || qaList.length === 0) {
+        container.innerHTML = '<div class="empty-state">暂无互动问答数据</div>';
+        return;
+    }
+    
+    let html = '';
+    
+    qaList.forEach((item, index) => {
+        const hasAnswer = item.answer && item.answer.trim();
+        const askTime = formatDateTime(item.ask_time);
+        const answerTime = item.answer_time ? formatDateTime(item.answer_time) : '';
+        
+        // 高亮关键字
+        const highlightedQuestion = highlightKeyword(item.question, keyword);
+        const highlightedAnswer = highlightKeyword(item.answer, keyword);
+        
+        html += `
+            <div class="qa-item">
+                <!-- 提问部分（一行显示） -->
+                <div class="qa-question-row">
+                    <span class="qa-icon question-icon">
+                        <i class="fas fa-user-circle"></i>
+                    </span>
+                    <span class="qa-label">问:</span>
+                    <span class="qa-meta">
+                        <span class="qa-ask-user">${item.ask_user || '投资者'}</span>
+                        <span class="qa-divider">|</span>
+                        <span class="qa-ask-time">${askTime}</span>
+                    </span>
+                    <span class="qa-content-text">${highlightedQuestion || '--'}</span>
+                </div>
+                
+                <!-- 回答部分（一行显示） -->
+                ${hasAnswer ? `
+                <div class="qa-answer-row">
+                    <span class="qa-icon answer-icon">
+                        <i class="fas fa-building"></i>
+                    </span>
+                    <span class="qa-label">答:</span>
+                    <span class="qa-meta">
+                        <span class="qa-answer-source">${item.code || '公司'}</span>
+                        ${answerTime ? `<span class="qa-divider">|</span><span class="qa-answer-time">${answerTime}</span>` : ''}
+                    </span>
+                    <span class="qa-content-text">${highlightedAnswer}</span>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+/**
+ * 渲染分页控件
+ */
+function renderPagination(data) {
+    const pagination = document.getElementById('qaPagination');
+    const { total, total_pages, current_page, limit, keyword } = data;
+    
+    if (total <= limit) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let html = `
+        <div class="pagination-info">
+            共 ${total} 条记录，当前第 ${current_page}/${total_pages} 页
+        </div>
+        <div class="pagination-buttons">
+    `;
+    
+    // 上一页
+    if (current_page > 1) {
+        html += `<button class="page-btn" onclick="loadQAData(null, ${current_page - 1}, '${keyword}')">
+            <i class="fas fa-chevron-left"></i> 上一页
+        </button>`;
+    } else {
+        html += `<button class="page-btn disabled"><i class="fas fa-chevron-left"></i> 上一页</button>`;
+    }
+    
+    // 页码按钮（最多显示5个）
+    const visiblePages = 5;
+    let startPage = Math.max(1, current_page - Math.floor(visiblePages / 2));
+    let endPage = Math.min(total_pages, startPage + visiblePages - 1);
+    
+    if (endPage - startPage + 1 < visiblePages) {
+        startPage = Math.max(1, endPage - visiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        if (i === current_page) {
+            html += `<button class="page-btn active">${i}</button>`;
+        } else {
+            html += `<button class="page-btn" onclick="loadQAData(null, ${i}, '${keyword}')">${i}</button>`;
+        }
+    }
+    
+    // 下一页
+    if (current_page < total_pages) {
+        html += `<button class="page-btn" onclick="loadQAData(null, ${current_page + 1}, '${keyword}')">
+            下一页 <i class="fas fa-chevron-right"></i>
+        </button>`;
+    } else {
+        html += `<button class="page-btn disabled">下一页 <i class="fas fa-chevron-right"></i></button>`;
+    }
+    
+    html += '</div>';
+    
+    pagination.innerHTML = html;
+}
+
+/**
+ * 格式化日期时间
+ */
+function formatDateTime(datetimeStr) {
+    if (!datetimeStr) return '';
+    
+    try {
+        const date = new Date(datetimeStr);
+        if (isNaN(date.getTime())) {
+            // 尝试解析其他格式
+            if (datetimeStr.length === 14) {
+                // 格式：20240101120000
+                const year = datetimeStr.substring(0, 4);
+                const month = datetimeStr.substring(4, 6);
+                const day = datetimeStr.substring(6, 8);
+                const hour = datetimeStr.substring(8, 10);
+                const minute = datetimeStr.substring(10, 12);
+                return `${year}-${month}-${day} ${hour}:${minute}`;
+            }
+            return datetimeStr;
+        }
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return datetimeStr;
+    }
 }

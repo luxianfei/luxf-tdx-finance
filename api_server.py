@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import MYSQL_CONFIG
 from database import MySQLClient
 from fetchers.f10_collector import F10Collector
+from fetchers.luxf_fetch_ths_hudong import fetch_qa_data
 
 logging.basicConfig(
     level=logging.INFO,
@@ -877,6 +878,137 @@ def move_my_stock(code):
     except Exception as e:
         logger.error(f"移动自选股失败: {e}")
         return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
+# ============================================================
+# 互动问答API接口
+# ============================================================
+
+@app.route('/api/stock/<code>/qa', methods=['GET'])
+def get_stock_qa(code):
+    """获取股票互动问答数据（支持分页）"""
+    limit = request.args.get('limit', 20, type=int)
+    page = request.args.get('page', 1, type=int)
+    keyword = request.args.get('keyword', '').strip()
+    
+    offset = (page - 1) * limit
+    
+    try:
+        db_client = MySQLClient(MYSQL_CONFIG)
+        
+        if keyword:
+            # 搜索模式
+            qa_data = db_client.search_stock_qa(code, keyword, limit, offset)
+            total = db_client.get_qa_search_count(code, keyword)
+        else:
+            # 普通分页模式
+            qa_data = db_client.get_stock_qa(code, limit, offset)
+            total = db_client.get_qa_count(code)
+        
+        db_client.close()
+        
+        total_pages = (total + limit - 1) // limit
+        
+        return jsonify({
+            'success': True,
+            'message': '获取成功',
+            'data': {
+                'qa_list': qa_data,
+                'total': total,
+                'total_pages': total_pages,
+                'current_page': page,
+                'limit': limit,
+                'keyword': keyword
+            }
+        })
+    except Exception as e:
+        logger.error(f"获取互动问答数据失败: {e}")
+        return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
+
+@app.route('/api/stock/<code>/qa/fetch', methods=['POST'])
+def fetch_stock_qa(code):
+    """采集股票互动问答数据并保存到数据库（支持增量更新）"""
+    full_sync = request.args.get('full_sync', 'false').lower() == 'true'
+    
+    try:
+        db_client = MySQLClient(MYSQL_CONFIG)
+        
+        # 获取最新回答时间（用于增量更新）
+        latest_time = None
+        if not full_sync:
+            latest_time = db_client.get_latest_answer_time(code)
+            logger.info(f"股票 {code} 最新回答时间: {latest_time}")
+        
+        db_client.close()
+        
+        # 调用采集脚本获取数据（获取所有3年内已回复的数据）
+        qa_data = fetch_qa_data(code, fetch_all=True, max_years=3)
+        
+        if not qa_data:
+            return jsonify({
+                'success': True,
+                'message': '未采集到新数据',
+                'data': {'count': 0}
+            })
+        
+        # 增量更新：只保留比最新时间新的数据
+        new_data = []
+        if latest_time and not full_sync:
+            # 将latest_time转换为datetime对象进行比较
+            from datetime import datetime
+            latest_dt = datetime.strptime(str(latest_time), '%Y-%m-%d %H:%M:%S')
+            
+            for item in qa_data:
+                answer_time = item.get('answer_time', '')
+                if answer_time:
+                    try:
+                        answer_dt = datetime.strptime(answer_time, '%Y-%m-%d %H:%M:%S')
+                        if answer_dt > latest_dt:
+                            new_data.append(item)
+                    except:
+                        # 时间格式不正确，跳过
+                        continue
+        else:
+            new_data = qa_data
+        
+        logger.info(f"股票 {code} 新增数据: {len(new_data)} 条")
+        
+        if not new_data:
+            return jsonify({
+                'success': True,
+                'message': '数据库已是最新，无需更新',
+                'data': {'count': 0}
+            })
+        
+        # 转换数据格式
+        data_list = []
+        for item in new_data:
+            data = {
+                'code': code,
+                'ask_user': item.get('ask_user', '') or '',
+                'ask_time': item.get('ask_time'),
+                'answer_time': item.get('answer_time'),
+                'question': item.get('content', '') or item.get('question', '') or '',
+                'answer': item.get('answer', '') or '',
+                'status': 1 if (item.get('status') == '1' or (item.get('answer') and item.get('answer').strip())) else 0,
+                'source_id': str(item.get('id', '')) or ''
+            }
+            data_list.append(data)
+        
+        # 保存到数据库
+        db_client = MySQLClient(MYSQL_CONFIG)
+        count = db_client.batch_insert_stock_qa(data_list)
+        db_client.close()
+        
+        return jsonify({
+            'success': True,
+            'message': f'成功增量更新 {count} 条问答数据',
+            'data': {'count': count}
+        })
+    except Exception as e:
+        logger.error(f"采集互动问答数据失败: {e}")
+        return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
 
 # ============================================================
 # 其他API接口
