@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主题测试</title>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --text-primary: #1a1a2e;
+            --accent-primary: #3182ce;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --text-primary: #f1f5f9;
+            --accent-primary: #60a5fa;
+        }
+
+        [data-theme="gold"] {
+            --bg-primary: #1a1510;
+            --text-primary: #f5e6d3;
+            --accent-primary: #d4af37;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            padding: 20px;
+            font-family: sans-serif;
+        }
+
+        button {
+            background-color: var(--accent-primary);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+
+        .theme-info {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid var(--accent-primary);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>主题切换测试</h1>
+    <button onclick="toggleTheme()">切换主题</button>
+    <div class="theme-info">
+        当前主题: <span id="currentTheme">light</span>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const themes = ['light', 'dark', 'gold'];
+            const currentIndex = themes.indexOf(currentTheme);
+            const newTheme = themes[(currentIndex + 1) % themes.length];
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            document.getElementById('currentTheme').textContent = newTheme;
+        }
+
+        // 加载保存的主题
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('currentTheme').textContent = savedTheme;
+        });
+    </script>
+</body>
+</html>

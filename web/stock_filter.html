@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财务指标筛选 - 股票财务数据分析</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-left">
+            <a href="/" class="logo">
+                <i class="fas fa-chart-line"></i>
+                <span>股票财务分析</span>
+            </a>
+        </div>
+        <div class="header-center">
+            <div class="search-box">
+                <input type="text" id="stockSearch" placeholder="输入股票代码/名称">
+                <button onclick="searchStock()">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="/my_stocks.html" class="nav-btn" title="自选股管理">
+                <i class="fas fa-star"></i>
+            </a>
+            <a href="/incremental_update.html" class="nav-btn" title="增量更新">
+                <i class="fas fa-sync-alt"></i>
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <i class="fas fa-moon" id="themeIcon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 筛选区域 -->
+        <section class="stock-info-card filter-section">
+            <div class="section-header">
+                <h2><i class="fas fa-filter"></i> 财务指标筛选</h2>
+            </div>
+            
+            <div class="filter-row">
+                <!-- 季度类型 -->
+                <div class="filter-item filter-item-single">
+                    <label>筛选类型</label>
+                    <select id="quarterType" onchange="toggleSecondQuarter()">
+                        <option value="single">单季度</option>
+                        <option value="two">连续2个季度</option>
+                    </select>
+                </div>
+                
+                <!-- 报告期（第一季度） -->
+                <div class="filter-item filter-item-single">
+                    <label>报告期Q1</label>
+                    <select id="reportDate">
+                        <option value="">全部</option>
+                    </select>
+                </div>
+                
+                <!-- 毛利率 -->
+                <div class="filter-item">
+                    <label>毛利率(%)</label>
+                    <div class="range-input">
+                        <input type="number" id="grossMarginMin" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="grossMarginMax" placeholder="最大" step="5">
+                    </div>
+                </div>
+                
+                <!-- 营收同比 -->
+                <div class="filter-item">
+                    <label>营收同比(%)</label>
+                    <div class="range-input">
+                        <input type="number" id="revenueYoYMin" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="revenueYoYMax" placeholder="最大" step="5">
+                    </div>
+                </div>
+                
+                <!-- 营收环比 -->
+                <div class="filter-item">
+                    <label>营收环比(%)</label>
+                    <div class="range-input">
+                        <input type="number" id="revenueQoQMin" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="revenueQoQMax" placeholder="最大" step="5">
+                    </div>
+                </div>
+                
+                <!-- 扣非同比 -->
+                <div class="filter-item">
+                    <label>扣非同比(%)</label>
+                    <div class="range-input">
+                        <input type="number" id="netProfitYoYMin" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="netProfitYoYMax" placeholder="最大" step="5">
+                    </div>
+                </div>
+                
+                <!-- 扣非环比 -->
+                <div class="filter-item">
+                    <label>扣非环比(%)</label>
+                    <div class="range-input">
+                        <input type="number" id="netProfitQoQMin" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="netProfitQoQMax" placeholder="最大" step="5">
+                    </div>
+                </div>
+                
+                <!-- 扣非TTM -->
+                <div class="filter-item">
+                    <label>扣非TTM(亿)</label>
+                    <div class="range-input">
+                        <input type="number" id="netProfitTtmMin" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="netProfitTtmMax" placeholder="最大值" step="5">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 第二季度筛选条件（默认隐藏） -->
+            <div id="secondQuarterRow" class="filter-row" style="display: none;">
+                <!-- 报告期（第二季度） -->
+                <div class="filter-item filter-item-single">
+                    <label>报告期Q2</label>
+                    <select id="reportDate2">
+                        <option value="">全部</option>
+                    </select>
+                </div>
+                
+                <!-- 毛利率Q2 -->
+                <div class="filter-item">
+                    <label>毛利率(%)</label>
+                    <div class="range-input">
+                        <input type="number" id="grossMarginMin2" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="grossMarginMax2" placeholder="最大" step="5">
+                    </div>
+                </div>
+                
+                <!-- 营收同比Q2 -->
+                <div class="filter-item">
+                    <label>营收同比(%)</label>
+                    <div class="range-input">
+                        <input type="number" id="revenueYoYMin2" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="revenueYoYMax2" placeholder="最大" step="5">
+                    </div>
+                </div>
+                
+                <!-- 营收环比Q2 -->
+                <div class="filter-item">
+                    <label>营收环比(%)</label>
+                    <div class="range-input">
+                        <input type="number" id="revenueQoQMin2" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="revenueQoQMax2" placeholder="最大" step="5">
+                    </div>
+                </div>
+                
+                <!-- 扣非同比Q2 -->
+                <div class="filter-item">
+                    <label>扣非同比(%)</label>
+                    <div class="range-input">
+                        <input type="number" id="netProfitYoYMin2" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="netProfitYoYMax2" placeholder="最大" step="5">
+                    </div>
+                </div>
+                
+                <!-- 扣非环比Q2 -->
+                <div class="filter-item">
+                    <label>扣非环比(%)</label>
+                    <div class="range-input">
+                        <input type="number" id="netProfitQoQMin2" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="netProfitQoQMax2" placeholder="最大" step="5">
+                    </div>
+                </div>
+                
+                <!-- 扣非TTM Q2 -->
+                <div class="filter-item">
+                    <label>扣非TTM(亿)</label>
+                    <div class="range-input">
+                        <input type="number" id="netProfitTtmMin2" placeholder="最小" step="5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="netProfitTtmMax2" placeholder="最大值" step="5">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="filter-actions">
+                <button class="btn btn-primary" onclick="applyFilters()">
+                    <i class="fas fa-search"></i> 筛选
+                </button>
+                <button class="btn btn-secondary" onclick="resetFilters()">
+                    <i class="fas fa-undo"></i> 重置
+                </button>
+                <button class="btn btn-secondary" onclick="exportResults()">
+                    <i class="fas fa-download"></i> 导出
+                </button>
+            </div>
+        </section>
+        
+        <!-- 结果统计 -->
+        <div class="result-stats">
+            <span>共找到 <strong id="totalCount">0</strong> 条记录</span>
+            <span>当前页码: <strong id="filterCurrentPage">1</strong> / <strong id="filterTotalPages">1</strong></span>
+        </div>
+        
+        <!-- 数据表格 -->
+        <section class="stock-info-card">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('code')">股票代码 <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('name')">股票名称 <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('gross_margin')">毛利率(%) <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('revenue_yoy')">营收同比(%) <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('revenue_qoq')">营收环比(%) <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('net_profit_yoy')">扣非同比(%) <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('net_profit_qoq')">扣非环比(%) <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('net_profit_ttm')">扣非TTM(亿) <i class="fas fa-sort"></i></th>
+                            <th>最新季度</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="10" class="loading">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页控件 -->
+            <div class="pagination">
+                <button class="pagination-btn" id="prevPage" onclick="prevPage()" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="pagination-numbers" id="paginationNumbers"></div>
+                <button class="pagination-btn" id="nextPage" onclick="nextPage()" disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- 添加自选股弹窗 -->
+    <div id="addToMyStockModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加到自选股</h3>
+                <button class="modal-close" onclick="closeAddToMyStockModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>股票代码</label>
+                    <input type="text" id="modalStockCode" readonly>
+                </div>
+                <div class="form-group">
+                    <label>股票名称</label>
+                    <input type="text" id="modalStockName" readonly>
+                </div>
+                <div class="form-group">
+                    <label>选择池</label>
+                    <div class="pool-select">
+                        <label class="radio-label">
+                            <input type="radio" name="myStockPoolType" value="core">
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-fire"></i> 核心池
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="myStockPoolType" value="watch" checked>
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-eye"></i> 观察池
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea id="modalStockNotes" placeholder="可选备注"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAddToMyStockModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmAddToMyStock()">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div id="toast" class="toast">
+        <span id="toastIcon"></span>
+        <span id="toastMessage"></span>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <p>数据来源：通达信F10 | 仅供参考，不构成投资建议</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        // 筛选页面专用变量（API_BASE_URL已在app.js中定义）
+        let filterCurrentPage = 1;
+        let filterTotalPages = 1;
+        let filterSortField = '';
+        let filterSortOrder = 'desc';
+        let filterFilters = {};
+        
+        // 应用筛选条件
+        async function applyFilters() {
+            filterCurrentPage = 1;
+            filterFilters = {
+                quarter_type: document.getElementById('quarterType').value || 'single',
+                report_date: document.getElementById('reportDate').value || null,
+                report_date2: document.getElementById('reportDate2').value || null,
+                // 第一季度筛选条件
+                gross_margin_min: document.getElementById('grossMarginMin').value || null,
+                gross_margin_max: document.getElementById('grossMarginMax').value || null,
+                revenue_yoy_min: document.getElementById('revenueYoYMin').value || null,
+                revenue_yoy_max: document.getElementById('revenueYoYMax').value || null,
+                revenue_qoq_min: document.getElementById('revenueQoQMin').value || null,
+                revenue_qoq_max: document.getElementById('revenueQoQMax').value || null,
+                net_profit_yoy_min: document.getElementById('netProfitYoYMin').value || null,
+                net_profit_yoy_max: document.getElementById('netProfitYoYMax').value || null,
+                net_profit_qoq_min: document.getElementById('netProfitQoQMin').value || null,
+                net_profit_qoq_max: document.getElementById('netProfitQoQMax').value || null,
+                net_profit_ttm_min: document.getElementById('netProfitTtmMin').value || null,
+                net_profit_ttm_max: document.getElementById('netProfitTtmMax').value || null,
+                // 第二季度筛选条件
+                gross_margin_min2: document.getElementById('grossMarginMin2').value || null,
+                gross_margin_max2: document.getElementById('grossMarginMax2').value || null,
+                revenue_yoy_min2: document.getElementById('revenueYoYMin2').value || null,
+                revenue_yoy_max2: document.getElementById('revenueYoYMax2').value || null,
+                revenue_qoq_min2: document.getElementById('revenueQoQMin2').value || null,
+                revenue_qoq_max2: document.getElementById('revenueQoQMax2').value || null,
+                net_profit_yoy_min2: document.getElementById('netProfitYoYMin2').value || null,
+                net_profit_yoy_max2: document.getElementById('netProfitYoYMax2').value || null,
+                net_profit_qoq_min2: document.getElementById('netProfitQoQMin2').value || null,
+                net_profit_qoq_max2: document.getElementById('netProfitQoQMax2').value || null,
+                net_profit_ttm_min2: document.getElementById('netProfitTtmMin2').value || null,
+                net_profit_ttm_max2: document.getElementById('netProfitTtmMax2').value || null
+            };
+            await loadData();
+        }
+        
+        // 重置筛选条件
+        function resetFilters() {
+            document.getElementById('grossMarginMin').value = '';
+            document.getElementById('grossMarginMax').value = '';
+            document.getElementById('revenueYoYMin').value = '';
+            document.getElementById('revenueYoYMax').value = '';
+            document.getElementById('revenueQoQMin').value = '';
+            document.getElementById('revenueQoQMax').value = '';
+            document.getElementById('netProfitYoYMin').value = '';
+            document.getElementById('netProfitYoYMax').value = '';
+            document.getElementById('netProfitQoQMin').value = '';
+            document.getElementById('netProfitQoQMax').value = '';
+            document.getElementById('netProfitTtmMin').value = '';
+            document.getElementById('netProfitTtmMax').value = '';
+            
+            filterFilters = {};
+            filterCurrentPage = 1;
+            filterSortField = '';
+            filterSortOrder = 'desc';
+            loadData();
+        }
+        
+        // 排序
+        function sortTable(field) {
+            if (filterSortField === field) {
+                filterSortOrder = filterSortOrder === 'desc' ? 'asc' : 'desc';
+            } else {
+                filterSortField = field;
+                filterSortOrder = 'desc';
+            }
+            filterCurrentPage = 1;
+            loadData();
+        }
+        
+        // 加载数据
+        async function loadData() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '<tr><td colspan="10" class="loading">加载中...</td></tr>';
+            
+            try {
+                let url = `${API_BASE_URL}/api/stocks/filter?page=${filterCurrentPage}&limit=20`;
+                
+                // 添加筛选条件
+                for (const [key, value] of Object.entries(filterFilters)) {
+                    if (value !== null && value !== '') {
+                        url += `&${key}=${value}`;
+                    }
+                }
+                
+                // 添加排序
+                if (filterSortField) {
+                    url += `&sort_field=${filterSortField}&sort_order=${filterSortOrder}`;
+                }
+                
+                console.log('请求URL:', url);
+                
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                console.log('API响应:', result);
+                
+                if (result.success && result.data) {
+                    const items = (result.data.items || []).map(item => ({
+                        ...item,
+                        inMyStock: myStockSet.has(item.code)
+                    }));
+                    renderTable(items);
+                    updatePagination(result.data.pagination || {current_page: 1, total_pages: 1, total_items: 0});
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="10" class="empty-state">暂无数据</td></tr>';
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                tableBody.innerHTML = '<tr><td colspan="10" class="error-state">加载失败: ' + error.message + '</td></tr>';
+            }
+        }
+        
+        // 渲染表格
+        function renderTable(items) {
+            const tableBody = document.getElementById('tableBody');
+            
+            if (!items || items.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="10" class="empty-state">暂无数据</td></tr>';
+                return;
+            }
+            
+            tableBody.innerHTML = items.map(item => `
+                <tr>
+                    <td><a href="stock_detail.html?code=${item.code}">${item.code}</a></td>
+                    <td>${item.name || '--'}</td>
+                    <td>${formatNumber(item.gross_margin)}%</td>
+                    <td class="${getNumberClass(item.revenue_yoy)}">${formatNumber(item.revenue_yoy)}%</td>
+                    <td class="${getNumberClass(item.revenue_qoq)}">${formatNumber(item.revenue_qoq)}%</td>
+                    <td class="${getNumberClass(item.net_profit_yoy)}">${formatNumber(item.net_profit_yoy)}%</td>
+                    <td class="${getNumberClass(item.net_profit_qoq)}">${formatNumber(item.net_profit_qoq)}%</td>
+                    <td>${formatNumber(item.net_profit_ttm)}</td>
+                    <td>${item.report_date || '--'}</td>
+                    <td class="action-cell">
+                        <button class="action-btn ${item.inMyStock ? 'in-stock' : ''}" onclick="${item.inMyStock ? `removeFromMyStock('${item.code}')` : `openAddToMyStockModal('${item.code}', '${item.name}')`}" title="${item.inMyStock ? '移出自选' : '添加到自选股'}">
+                            <i class="fas fa-star"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        // 格式化数字
+        function formatNumber(value) {
+            if (value === null || value === undefined || value === '') return '--';
+            return parseFloat(value).toFixed(2);
+        }
+        
+        // 获取数字样式类
+        function getNumberClass(value) {
+            if (value === null || value === undefined) return '';
+            const num = parseFloat(value);
+            if (num > 0) return 'positive';
+            if (num < 0) return 'negative';
+            return '';
+        }
+        
+        // 更新分页
+        function updatePagination(pagination) {
+            filterCurrentPage = pagination.current_page;
+            filterTotalPages = pagination.total_pages;
+            
+            document.getElementById('totalCount').textContent = pagination.total_items;
+            document.getElementById('filterCurrentPage').textContent = filterCurrentPage;
+            document.getElementById('filterTotalPages').textContent = filterTotalPages;
+            
+            document.getElementById('prevPage').disabled = filterCurrentPage <= 1;
+            document.getElementById('nextPage').disabled = filterCurrentPage >= filterTotalPages;
+            
+            renderPaginationNumbers();
+        }
+        
+        // 渲染分页数字
+        function renderPaginationNumbers() {
+            const container = document.getElementById('paginationNumbers');
+            let html = '';
+            
+            const maxVisible = 5;
+            let start = Math.max(1, filterCurrentPage - Math.floor(maxVisible / 2));
+            let end = Math.min(filterTotalPages, start + maxVisible - 1);
+            
+            if (end - start + 1 < maxVisible) {
+                start = Math.max(1, end - maxVisible + 1);
+            }
+            
+            if (start > 1) {
+                html += `<button class="pagination-number" onclick="goToPage(1)">1</button>`;
+                if (start > 2) {
+                    html += `<span class="pagination-ellipsis">...</span>`;
+                }
+            }
+            
+            for (let i = start; i <= end; i++) {
+                html += `<button class="pagination-number ${i === filterCurrentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+            
+            if (end < filterTotalPages) {
+                if (end < filterTotalPages - 1) {
+                    html += `<span class="pagination-ellipsis">...</span>`;
+                }
+                html += `<button class="pagination-number" onclick="goToPage(${filterTotalPages})">${filterTotalPages}</button>`;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        // 跳转到指定页
+        function goToPage(page) {
+            if (page >= 1 && page <= filterTotalPages && page !== filterCurrentPage) {
+                filterCurrentPage = page;
+                loadData();
+            }
+        }
+        
+        // 上一页
+        function prevPage() {
+            if (filterCurrentPage > 1) {
+                filterCurrentPage--;
+                loadData();
+            }
+        }
+        
+        // 下一页
+        function nextPage() {
+            if (filterCurrentPage < filterTotalPages) {
+                filterCurrentPage++;
+                loadData();
+            }
+        }
+        
+        // 跳转到详情页
+        function goToDetail(code) {
+            window.location.href = `stock_detail.html?code=${code}`;
+        }
+        
+        // 导出结果
+        function exportResults() {
+            alert('导出功能开发中...');
+        }
+        
+        // 打开添加自选股弹窗
+        let currentStockCode = '';
+        let currentStockName = '';
+        
+        function openAddToMyStockModal(code, name) {
+            currentStockCode = code;
+            currentStockName = name;
+            document.getElementById('modalStockCode').value = code;
+            document.getElementById('modalStockName').value = name || '';
+            document.getElementById('modalStockNotes').value = '';
+            document.querySelector('input[name="myStockPoolType"][value="watch"]').checked = true;
+            document.getElementById('addToMyStockModal').style.display = 'flex';
+        }
+        
+        // 关闭弹窗
+        function closeAddToMyStockModal() {
+            document.getElementById('addToMyStockModal').style.display = 'none';
+        }
+        
+        // Toast提示函数
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toast.className = `toast ${type}`;
+            
+            const icons = {
+                success: '<i class="fas fa-check-circle"></i>',
+                error: '<i class="fas fa-times-circle"></i>',
+                info: '<i class="fas fa-info-circle"></i>'
+            };
+            toastIcon.innerHTML = icons[type] || icons.info;
+            
+            toastMessage.textContent = message;
+            
+            toast.style.display = 'flex';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 确认添加到自选股
+        async function confirmAddToMyStock() {
+            const poolType = document.querySelector('input[name="myStockPoolType"]:checked')?.value;
+            const notes = document.getElementById('modalStockNotes').value;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stock/${currentStockCode}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        pool_type: poolType,
+                        name: currentStockName,
+                        notes: notes
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    closeAddToMyStockModal();
+                    await loadMyStockList();
+                    loadData();
+                    showToast('添加成功！', 'success');
+                } else {
+                    showToast(result.message || '添加失败', 'error');
+                }
+            } catch (error) {
+                console.error('添加失败:', error);
+                showToast('添加失败，请稍后重试', 'error');
+            }
+        }
+        
+        // 点击弹窗背景关闭
+        document.getElementById('addToMyStockModal').addEventListener('click', function(e) {
+            if (e.target === this) closeAddToMyStockModal();
+        });
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            loadTheme();
+            loadMyStockList();
+            await loadReportDates();
+            loadData();
+        });
+
+        // 切换主题（覆盖app.js中的实现，支持3种主题）
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const themes = ['light', 'dark', 'gold'];
+            const currentIndex = themes.indexOf(currentTheme);
+            const newTheme = themes[(currentIndex + 1) % themes.length];
+
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        // 更新主题图标
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('themeIcon');
+            if (theme === 'dark') {
+                icon.className = 'fas fa-sun';
+            } else if (theme === 'gold') {
+                icon.className = 'fas fa-crown';
+            } else {
+                icon.className = 'fas fa-moon';
+            }
+        }
+        
+        // 自选股列表
+        let myStockSet = new Set();
+        
+        // 加载报告期列表
+        async function loadReportDates() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/report_dates`);
+                const result = await response.json();
+                if (result.success && result.data) {
+                    const select1 = document.getElementById('reportDate');
+                    const select2 = document.getElementById('reportDate2');
+                    
+                    // 保留"全部"选项
+                    select1.innerHTML = '<option value="">全部</option>';
+                    select2.innerHTML = '<option value="">全部</option>';
+                    
+                    // 添加动态获取的报告期
+                    result.data.forEach((item, index) => {
+                        // 第一个下拉框
+                        const option1 = document.createElement('option');
+                        option1.value = item.report_date;
+                        option1.textContent = item.label;
+                        // 默认选中第一个（最新季度）
+                        if (index === 0) {
+                            option1.selected = true;
+                        }
+                        select1.appendChild(option1);
+                        
+                        // 第二个下拉框
+                        const option2 = document.createElement('option');
+                        option2.value = item.report_date;
+                        option2.textContent = item.label;
+                        // 默认选中第二个（往前推一个季度）
+                        if (index === 1) {
+                            option2.selected = true;
+                        }
+                        select2.appendChild(option2);
+                    });
+                    
+                    // 初始化筛选条件为默认选中的报告期
+                    filterFilters = {
+                        report_date: document.getElementById('reportDate').value || null,
+                        report_date2: document.getElementById('reportDate2').value || null,
+                        quarter_type: 'single',
+                        gross_margin_min: null,
+                        gross_margin_max: null,
+                        revenue_yoy_min: null,
+                        revenue_yoy_max: null,
+                        revenue_qoq_min: null,
+                        revenue_qoq_max: null,
+                        net_profit_yoy_min: null,
+                        net_profit_yoy_max: null,
+                        net_profit_qoq_min: null,
+                        net_profit_qoq_max: null,
+                        net_profit_ttm_min: null,
+                        net_profit_ttm_max: null,
+                        // 第二季度筛选条件
+                        gross_margin_min2: null,
+                        gross_margin_max2: null,
+                        revenue_yoy_min2: null,
+                        revenue_yoy_max2: null,
+                        revenue_qoq_min2: null,
+                        revenue_qoq_max2: null,
+                        net_profit_yoy_min2: null,
+                        net_profit_yoy_max2: null,
+                        net_profit_qoq_min2: null,
+                        net_profit_qoq_max2: null,
+                        net_profit_ttm_min2: null,
+                        net_profit_ttm_max2: null
+                    };
+                }
+            } catch (error) {
+                console.error('加载报告期列表失败:', error);
+            }
+        }
+        
+        // 切换第二季度筛选条件的显示/隐藏
+        function toggleSecondQuarter() {
+            const quarterType = document.getElementById('quarterType').value;
+            const secondQuarterRow = document.getElementById('secondQuarterRow');
+            
+            if (quarterType === 'two') {
+                secondQuarterRow.style.display = 'flex';
+            } else {
+                secondQuarterRow.style.display = 'none';
+            }
+        }
+        
+        // 加载自选股列表
+        async function loadMyStockList() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stocks`);
+                const result = await response.json();
+                if (result.success && result.data) {
+                    const stocks = result.data.stocks || result.data;
+                    myStockSet = new Set(stocks.map(item => item.code));
+                }
+            } catch (error) {
+                console.error('加载自选股列表失败:', error);
+            }
+        }
+        
+        // 移除自选股
+        async function removeFromMyStock(code) {
+            if (!confirm('确定要移除该自选股吗？')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stock/${code}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    myStockSet.delete(code);
+                    loadData();
+                    showToast('已移除', 'info');
+                } else {
+                    showToast(result.message || '移除失败', 'error');
+                }
+            } catch (error) {
+                console.error('移除失败:', error);
+                showToast('移除失败，请稍后重试', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

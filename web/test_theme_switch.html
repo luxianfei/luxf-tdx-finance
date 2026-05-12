@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主题切换测试</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            padding: 50px;
+            text-align: center;
+        }
+        .theme-display {
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+        }
+        .theme-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent-primary);
+        }
+        button {
+            padding: 10px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>主题切换测试</h1>
+    <div class="theme-display">
+        <div class="theme-name" id="themeName">Light</div>
+        <p>背景色: <span id="bgColor"></span></p>
+        <p>文字色: <span id="textColor"></span></p>
+        <p>强调色: <span id="accentColor"></span></p>
+    </div>
+    <button onclick="toggleTheme()">切换主题</button>
+
+    <script>
+        const themes = ['light', 'dark', 'gold'];
+        const themeNames = {
+            'light': 'Light (浅色)',
+            'dark': 'Dark (深色)', 
+            'gold': 'Gold (金色)'
+        };
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const currentIndex = themes.indexOf(currentTheme);
+            const newTheme = themes[(currentIndex + 1) % themes.length];
+            
+            console.log(`切换主题: ${currentTheme} -> ${newTheme}`);
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateDisplay(newTheme);
+        }
+
+        function updateDisplay(theme) {
+            document.getElementById('themeName').textContent = themeNames[theme];
+            
+            const style = window.getComputedStyle(document.body);
+            document.getElementById('bgColor').textContent = style.getPropertyValue('--bg-secondary');
+            document.getElementById('textColor').textContent = style.getPropertyValue('--text-primary');
+            document.getElementById('accentColor').textContent = style.getPropertyValue('--accent-primary');
+        }
+
+        // 初始化显示
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateDisplay(savedTheme);
+            console.log(`初始化主题: ${savedTheme}`);
+        });
+    </script>
+</body>
+</html>

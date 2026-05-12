@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票财务分析系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 首页特定样式 */
+        .hero-section {
+            text-align: center;
+            padding: 80px 24px;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            color: white;
+            border-radius: var(--radius-lg);
+            margin-bottom: 40px;
+        }
+
+        .hero-section h1 {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+        }
+
+        .hero-section p {
+            font-size: 1.125rem;
+            opacity: 0.9;
+            margin-bottom: 32px;
+        }
+
+        .hero-search {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .hero-search .search-box {
+            background: white;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .hero-search .search-box input {
+            color: #333;
+        }
+
+        .features-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .feature-card {
+            background-color: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .feature-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 1.75rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .quick-links {
+            background-color: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .quick-links h2 {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .stock-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .stock-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+        }
+
+        .stock-link:hover {
+            background-color: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-left">
+            <a href="/" class="logo">
+                <i class="fas fa-chart-line"></i>
+                <span>股票财务分析</span>
+            </a>
+        </div>
+        <div class="header-center">
+            <div class="search-box">
+                <input type="text" id="stockSearch" placeholder="输入股票代码/名称">
+                <button onclick="searchStock()">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <i class="fas fa-moon" id="themeIcon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- Hero区域 -->
+        <section class="hero-section">
+            <h1>股票财务数据分析平台</h1>
+            <p>基于通达信F10数据，提供专业的季度财务指标分析</p>
+            <div class="hero-search">
+                <div class="search-box">
+                    <input type="text" id="heroSearch" placeholder="输入股票代码，如：688456">
+                    <button onclick="searchFromHero()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 功能特性 -->
+        <section class="features-section">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <h3>季度指标分析</h3>
+                <p>毛利率、营收同比、扣非净利润同比等关键财务指标，支持16个季度历史数据对比</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>可视化图表</h3>
+                <p>直观的数据趋势图表，支持多维度指标切换，快速把握财务变化趋势</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-table"></i>
+                </div>
+                <h3>明细数据</h3>
+                <p>完整的季度财务数据表格，支持数据导出，方便进一步分析研究</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-moon"></i>
+                </div>
+                <h3>深色模式</h3>
+                <p>支持浅色/深色主题切换，适应不同使用场景，保护视力</p>
+            </div>
+        </section>
+
+        <!-- 快速链接 -->
+        <section class="quick-links">
+            <h2>快速查看</h2>
+            <div class="stock-links">
+                <a href="stock_filter.html" class="stock-link">
+                    <i class="fas fa-filter"></i>
+                    财务指标筛选
+                </a>
+                <a href="my_stocks.html" class="stock-link">
+                    <i class="fas fa-star"></i>
+                    自选股管理
+                </a>
+                <a href="stock_detail.html?code=688456" class="stock-link">
+                    <i class="fas fa-chart-bar"></i>
+                    有研粉材 (688456)
+                </a>
+                <a href="stock_detail.html?code=000001" class="stock-link">
+                    <i class="fas fa-chart-bar"></i>
+                    平安银行 (000001)
+                </a>
+                <a href="stock_detail.html?code=600519" class="stock-link">
+                    <i class="fas fa-chart-bar"></i>
+                    贵州茅台 (600519)
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <p>数据来源：通达信F10 | 仅供参考，不构成投资建议</p>
+    </footer>
+
+    <script>
+        // 加载主题
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+
+        // 切换主题
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        // 更新主题图标
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('themeIcon');
+            icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        // 搜索股票
+        function searchStock() {
+            const input = document.getElementById('stockSearch');
+            const code = input.value.trim();
+            if (code) {
+                window.location.href = `stock_detail.html?code=${code}`;
+            }
+        }
+
+        // 从Hero区域搜索
+        function searchFromHero() {
+            const input = document.getElementById('heroSearch');
+            const code = input.value.trim();
+            if (code) {
+                window.location.href = `stock_detail.html?code=${code}`;
+            }
+        }
+
+        // 绑定回车事件
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTheme();
+            
+            document.getElementById('stockSearch').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') searchStock();
+            });
+            
+            document.getElementById('heroSearch').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') searchFromHero();
+            });
+        });
+    </script>
+</body>
+</html>

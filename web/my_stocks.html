@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自选股管理 - 财务数据分析</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-left">
+            <a href="/" class="logo">
+                <i class="fas fa-chart-line"></i>
+                <span>股票财务分析</span>
+            </a>
+        </div>
+        <div class="header-center">
+            <div class="search-box">
+                <input type="text" id="stockSearch" placeholder="输入股票代码/名称">
+                <button onclick="searchStock()">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="/stock_detail.html" class="nav-btn" title="股票详情">
+                <i class="fas fa-chart-bar"></i>
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <i class="fas fa-moon" id="themeIcon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 自选股管理卡片 -->
+        <section class="stock-info-card">
+            <div class="section-header">
+                <h2><i class="fas fa-star"></i> 自选股管理</h2>
+            </div>
+            
+            <!-- 池类型切换 -->
+            <div class="pool-tabs">
+                <button class="pool-tab active" data-pool="all" onclick="switchPool('all')">
+                    全部 (<span id="countAll">0</span>)
+                </button>
+                <button class="pool-tab" data-pool="core" onclick="switchPool('core')">
+                    <i class="fas fa-fire"></i> 核心池 (<span id="countCore">0</span>)
+                </button>
+                <button class="pool-tab" data-pool="watch" onclick="switchPool('watch')">
+                    <i class="fas fa-eye"></i> 观察池 (<span id="countWatch">0</span>)
+                </button>
+            </div>
+            
+            <!-- 自选股列表 -->
+            <div class="stock-list-container">
+                <div id="stockList" class="stock-list">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 添加到自选股弹窗 -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加到自选股</h3>
+                <button class="modal-close" onclick="closeAddModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>股票代码</label>
+                    <input type="text" id="addStockCode" readonly>
+                </div>
+                <div class="form-group">
+                    <label>股票名称</label>
+                    <input type="text" id="addStockName" readonly>
+                </div>
+                <div class="form-group">
+                    <label>选择池</label>
+                    <div class="pool-select">
+                        <label class="radio-label">
+                            <input type="radio" name="poolType" value="core">
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-fire"></i> 核心池
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="poolType" value="watch" checked>
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-eye"></i> 观察池
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea id="addNotes" rows="3" placeholder="可选：添加备注信息"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAddModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmAddStock()">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 移动到弹窗 -->
+    <div id="moveModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>移动自选股</h3>
+                <button class="modal-close" onclick="closeMoveModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>股票</label>
+                    <input type="text" id="moveStockInfo" readonly>
+                </div>
+                <div class="form-group">
+                    <label>当前池</label>
+                    <span id="moveFromPool"></span>
+                </div>
+                <div class="form-group">
+                    <label>移动到</label>
+                    <div class="pool-select">
+                        <label class="radio-label" id="moveToCoreLabel">
+                            <input type="radio" name="moveToPool" value="core">
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-fire"></i> 核心池
+                        </label>
+                        <label class="radio-label" id="moveToWatchLabel">
+                            <input type="radio" name="moveToPool" value="watch">
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-eye"></i> 观察池
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMoveModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmMoveStock()">确认移动</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        let currentPool = 'all';
+        let pendingStockCode = '';
+        let pendingStockName = '';
+        let pendingFromPool = '';
+
+        // 切换池类型
+        async function switchPool(pool) {
+            currentPool = pool;
+            
+            // 更新标签样式
+            document.querySelectorAll('.pool-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.pool === pool);
+            });
+            
+            // 加载自选股列表
+            await loadMyStocks();
+        }
+
+        // 加载自选股列表
+        async function loadMyStocks() {
+            const listContainer = document.getElementById('stockList');
+            listContainer.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stocks`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    // 更新计数
+                    const counts = result.data.counts || {};
+                    document.getElementById('countAll').textContent = 
+                        (counts.core || 0) + (counts.watch || 0);
+                    document.getElementById('countCore').textContent = counts.core || 0;
+                    document.getElementById('countWatch').textContent = counts.watch || 0;
+                    
+                    // 过滤并显示列表
+                    let stocks = result.data.stocks || [];
+                    if (currentPool !== 'all') {
+                        stocks = stocks.filter(s => s.pool_type === currentPool);
+                    }
+                    
+                    if (stocks.length === 0) {
+                        listContainer.innerHTML = '<div class="empty-state">暂无自选股</div>';
+                        return;
+                    }
+                    
+                    listContainer.innerHTML = stocks.map(stock => `
+                        <div class="stock-item">
+                            <div class="stock-info" onclick="goToDetail('${stock.code}')">
+                                <div class="stock-name-row">
+                                    <span class="stock-name">${stock.name || stock.code}</span>
+                                    <span class="pool-badge ${stock.pool_type}">${stock.pool_type === 'core' ? '核心池' : '观察池'}</span>
+                                </div>
+                                <div class="stock-code">${stock.code}</div>
+                            </div>
+                            <div class="stock-actions">
+                                <button class="action-btn" onclick="showMoveModal('${stock.code}', '${stock.name}', '${stock.pool_type}')" title="移动">
+                                    <i class="fas fa-exchange-alt"></i>
+                                </button>
+                                <button class="action-btn danger" onclick="removeStock('${stock.code}', '${stock.pool_type}')" title="移除">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listContainer.innerHTML = '<div class="error-state">加载失败</div>';
+                }
+            } catch (error) {
+                console.error('加载自选股失败:', error);
+                listContainer.innerHTML = '<div class="error-state">加载失败，请稍后重试</div>';
+            }
+        }
+
+        // 跳转到股票详情页
+        function goToDetail(code) {
+            window.location.href = `stock_detail.html?code=${code}`;
+        }
+
+        // 显示移动弹窗
+        function showMoveModal(code, name, fromPool) {
+            pendingStockCode = code;
+            pendingStockName = name;
+            pendingFromPool = fromPool;
+            
+            document.getElementById('moveStockInfo').value = `${name} (${code})`;
+            document.getElementById('moveFromPool').textContent = fromPool === 'core' ? '核心池' : '观察池';
+            
+            // 禁用源池选项
+            document.getElementById('moveToCoreLabel').style.display = fromPool === 'core' ? 'none' : '';
+            document.getElementById('moveToWatchLabel').style.display = fromPool === 'watch' ? 'none' : '';
+            
+            // 重置单选框
+            document.querySelectorAll('input[name="moveToPool"]').forEach(radio => {
+                radio.checked = false;
+            });
+            
+            document.getElementById('moveModal').style.display = 'flex';
+        }
+
+        // 关闭移动弹窗
+        function closeMoveModal() {
+            document.getElementById('moveModal').style.display = 'none';
+        }
+
+        // 确认移动
+        async function confirmMoveStock() {
+            const toPool = document.querySelector('input[name="moveToPool"]:checked')?.value;
+            if (!toPool) {
+                alert('请选择目标池');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stock/${pendingStockCode}/move`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        from_pool: pendingFromPool,
+                        to_pool: toPool
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    closeMoveModal();
+                    await loadMyStocks();
+                } else {
+                    alert(result.message || '移动失败');
+                }
+            } catch (error) {
+                console.error('移动失败:', error);
+                alert('移动失败，请稍后重试');
+            }
+        }
+
+        // 移除自选股
+        async function removeStock(code, poolType) {
+            if (!confirm('确定要移除该自选股吗？')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stock/${code}?pool_type=${poolType}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    await loadMyStocks();
+                } else {
+                    alert(result.message || '移除失败');
+                }
+            } catch (error) {
+                console.error('移除失败:', error);
+                alert('移除失败，请稍后重试');
+            }
+        }
+
+        // 关闭添加弹窗
+        function closeAddModal() {
+            document.getElementById('addModal').style.display = 'none';
+        }
+
+        // 显示添加弹窗
+        function showAddModal(code, name) {
+            pendingStockCode = code;
+            pendingStockName = name;
+            
+            document.getElementById('addStockCode').value = code;
+            document.getElementById('addStockName').value = name;
+            document.getElementById('addNotes').value = '';
+            document.querySelector('input[name="poolType"][value="watch"]').checked = true;
+            
+            document.getElementById('addModal').style.display = 'flex';
+        }
+
+        // 确认添加
+        async function confirmAddStock() {
+            const poolType = document.querySelector('input[name="poolType"]:checked')?.value;
+            const notes = document.getElementById('addNotes').value;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stock/${pendingStockCode}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        pool_type: poolType,
+                        name: pendingStockName,
+                        notes: notes
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    closeAddModal();
+                    await loadMyStocks();
+                    alert('添加成功！');
+                } else {
+                    alert(result.message || '添加失败');
+                }
+            } catch (error) {
+                console.error('添加失败:', error);
+                alert('添加失败，请稍后重试');
+            }
+        }
+
+        // 页面加载时获取自选股列表
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMyStocks();
+        });
+
+        // 点击弹窗背景关闭
+        document.getElementById('addModal').addEventListener('click', function(e) {
+            if (e.target === this) closeAddModal();
+        });
+        document.getElementById('moveModal').addEventListener('click', function(e) {
+            if (e.target === this) closeMoveModal();
+        });
+    </script>
+</body>
+</html>

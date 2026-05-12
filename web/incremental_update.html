@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>增量行情信息更新</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .update-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 30px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .update-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .update-header h1 {
+            color: var(--text-primary);
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .update-header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .update-btn {
+            width: 100%;
+            padding: 20px;
+            margin-bottom: 15px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            display: flex;
+            align-items: center;
+        }
+        
+        .update-btn:hover:not(:disabled) {
+            background: var(--bg-hover);
+            border-color: var(--accent-primary);
+            transform: translateX(5px);
+        }
+        
+        .update-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .update-btn i {
+            font-size: 24px;
+            color: var(--accent-primary);
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .update-btn-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .update-btn-title {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        
+        .update-btn-desc {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+        
+        .update-btn.primary {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+        
+        .update-btn.primary i,
+        .update-btn.primary .update-btn-title,
+        .update-btn.primary .update-btn-desc {
+            color: white;
+        }
+        
+        .status-container {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status-container.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-container.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-container.processing {
+            background: #fff3cd;
+            color: #856404;
+            display: block;
+            border: 1px solid #ffeeba;
+        }
+        
+        .status-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .status-header i {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+        
+        .status-header h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+        
+        .status-message {
+            margin-bottom: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        .progress-text {
+            text-align: right;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 6px;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .stat-success { color: #28a745; }
+        .stat-failed { color: #dc3545; }
+        .stat-total { color: #6c757d; }
+        
+        .status-spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="update-container">
+        <div class="update-header">
+            <h1><i class="fas fa-sync-alt"></i> 增量行情信息更新</h1>
+            <p>从通达信本地目录采集最新行情数据，更新数据库</p>
+        </div>
+        
+        <button class="update-btn" onclick="updateMarketSnapshot()" id="btnSnapshot">
+            <i class="fas fa-chart-line"></i>
+            <div class="update-btn-content">
+                <span class="update-btn-title">更新市场行情快照</span>
+                <span class="update-btn-desc">从通达信本地目录采集最新价格、涨跌金额、涨跌幅、市值等数据</span>
+            </div>
+        </button>
+        
+        <button class="update-btn" onclick="updateProfitForecast()" id="btnForecast">
+            <i class="fas fa-trending-up"></i>
+            <div class="update-btn-content">
+                <span class="update-btn-title">更新盈利预测数据</span>
+                <span class="update-btn-desc">检查并更新机构盈利预测数据（归母净利润、营收数据）</span>
+            </div>
+        </button>
+        
+        <button class="update-btn primary" onclick="updateAllData()" id="btnAll">
+            <i class="fas fa-refresh"></i>
+            <div class="update-btn-content">
+                <span class="update-btn-title">全部更新</span>
+                <span class="update-btn-desc">执行完整增量更新（市场快照 + 盈利预测）</span>
+            </div>
+        </button>
+        
+        <div id="statusContainer" class="status-container">
+            <div class="status-header">
+                <i id="statusIcon" class="fas fa-info-circle"></i>
+                <h3 id="statusTitle">处理中</h3>
+            </div>
+            <div class="status-message" id="statusMessage">准备就绪</div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <div class="progress-text" id="progressText">0%</div>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-item">
+                    <div class="stat-value stat-total" id="statTotal">-</div>
+                    <div class="stat-label">总股票数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value stat-success" id="statSuccess">-</div>
+                    <div class="stat-label">更新成功</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value stat-failed" id="statFailed">-</div>
+                    <div class="stat-label">更新失败</div>
+                </div>
+            </div>
+        </div>
+        
+        <a href="/" class="back-link">← 返回首页</a>
+    </div>
+
+    <script>
+        let eventSource = null;
+        
+        function disableButtons(disabled) {
+            document.getElementById('btnSnapshot').disabled = disabled;
+            document.getElementById('btnForecast').disabled = disabled;
+            document.getElementById('btnAll').disabled = disabled;
+        }
+        
+        function parseStats(message) {
+            // 从消息中解析统计信息
+            let total = '-';
+            let success = '-';
+            let failed = '-';
+            
+            // 匹配 "共 N 只股票" 格式（初始消息）
+            const totalMatch = message.match(/共 (\d+) 只股票/);
+            if (totalMatch) {
+                total = parseInt(totalMatch[1]);
+            }
+            
+            // 匹配 "已成功更新 N/M 只股票" 格式
+            const successMatch = message.match(/已成功更新 (\d+)\/(\d+) 只股票/);
+            if (successMatch) {
+                success = parseInt(successMatch[1]);
+                total = parseInt(successMatch[2]);
+            }
+            
+            // 匹配 "成功 N 只" 格式（完成消息）
+            const successOnlyMatch = message.match(/成功 (\d+) 只/);
+            if (successOnlyMatch) {
+                success = parseInt(successOnlyMatch[1]);
+            }
+            
+            // 匹配 "失败 N 只" 格式
+            const failedMatch = message.match(/失败 (\d+) 只/);
+            if (failedMatch) {
+                failed = parseInt(failedMatch[1]);
+            }
+            
+            return {
+                total: total,
+                success: success,
+                failed: failed
+            };
+        }
+        
+        function updateStats(stats) {
+            document.getElementById('statTotal').textContent = stats.total;
+            document.getElementById('statSuccess').textContent = stats.success;
+            document.getElementById('statFailed').textContent = stats.failed;
+        }
+        
+        function showStatus(type, title, message, progress = 0) {
+            const container = document.getElementById('statusContainer');
+            const icon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusMsg = document.getElementById('statusMessage');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            container.className = `status-container ${type}`;
+            
+            if (type === 'processing') {
+                icon.className = 'fas fa-spinner status-spinner';
+            } else if (type === 'success') {
+                icon.className = 'fas fa-check-circle';
+            } else {
+                icon.className = 'fas fa-exclamation-circle';
+            }
+            
+            statusTitle.textContent = title;
+            statusMsg.textContent = message;
+            progressFill.style.width = `${progress}%`;
+            progressText.textContent = `${progress.toFixed(1)}%`;
+            
+            // 解析并更新统计信息
+            const stats = parseStats(message);
+            updateStats(stats);
+        }
+        
+        function startProgressListening() {
+            // 关闭之前的连接
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            // 建立SSE连接
+            console.log('建立SSE连接...');
+            eventSource = new EventSource('/api/update/progress');
+            
+            eventSource.onopen = function() {
+                console.log('SSE连接已建立');
+            };
+            
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('收到进度消息:', data);
+                    showStatus('processing', '更新中', data.message, data.progress);
+                    
+                    if (!data.running) {
+                        eventSource.close();
+                        eventSource = null;
+                    }
+                } catch (e) {
+                    console.error('解析进度数据失败:', e);
+                    console.log('原始消息:', event.data);
+                }
+            };
+            
+            eventSource.onerror = function(error) {
+                console.error('进度连接出错:', error);
+                eventSource.close();
+                eventSource = null;
+            };
+        }
+        
+        async function updateMarketSnapshot() {
+            disableButtons(true);
+            showStatus('processing', '更新市场行情快照', '正在采集通达信本地行情数据...', 0);
+            startProgressListening();
+            
+            try {
+                const response = await fetch('/api/update/market_snapshot', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('success', '更新完成', result.message, 100);
+                    updateStats({
+                        total: result.data.total,
+                        success: result.data.success,
+                        failed: result.data.failed
+                    });
+                } else {
+                    showStatus('error', '更新失败', result.message);
+                }
+            } catch (error) {
+                showStatus('error', '更新失败', `网络错误: ${error.message}`);
+            } finally {
+                disableButtons(false);
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            }
+        }
+        
+        async function updateProfitForecast() {
+            disableButtons(true);
+            showStatus('processing', '更新盈利预测数据', '正在检查并更新机构盈利预测...', 0);
+            startProgressListening();
+            
+            try {
+                const response = await fetch('/api/update/profit_forecast', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('success', '更新完成', result.message, 100);
+                    updateStats({
+                        total: result.data.total,
+                        success: result.data.success,
+                        failed: result.data.failed
+                    });
+                } else {
+                    showStatus('error', '更新失败', result.message);
+                }
+            } catch (error) {
+                showStatus('error', '更新失败', `网络错误: ${error.message}`);
+            } finally {
+                disableButtons(false);
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            }
+        }
+        
+        async function updateAllData() {
+            disableButtons(true);
+            showStatus('processing', '执行完整增量更新', '正在更新市场行情快照...', 0);
+            startProgressListening();
+            
+            try {
+                const response = await fetch('/api/update/all', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const msg = `市场快照：成功 ${result.data.market_snapshot.success} 只，失败 ${result.data.market_snapshot.failed} 只；盈利预测：成功 ${result.data.profit_forecast.success} 只，失败 ${result.data.profit_forecast.failed} 只`;
+                    showStatus('success', '全部更新完成', msg, 100);
+                    updateStats({
+                        total: result.data.market_snapshot.total,
+                        success: result.data.market_snapshot.success + result.data.profit_forecast.success,
+                        failed: result.data.market_snapshot.failed + result.data.profit_forecast.failed
+                    });
+                } else {
+                    showStatus('error', '更新失败', result.message);
+                }
+            } catch (error) {
+                showStatus('error', '更新失败', `网络错误: ${error.message}`);
+            } finally {
+                disableButtons(false);
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            }
+        }
+        
+        // 页面加载时检查是否正在更新
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/update/status');
+                const result = await response.json();
+                
+                if (result.data && result.data.running) {
+                    disableButtons(true);
+                    showStatus('processing', '更新中', result.data.message, result.data.progress);
+                    startProgressListening();
+                }
+            } catch (e) {
+                console.log('无法获取更新状态');
+            }
+        });
+    </script>
+</body>
+</html>

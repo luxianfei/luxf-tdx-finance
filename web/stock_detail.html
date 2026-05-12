@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票详情 - 财务数据分析</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-left">
+            <a href="/" class="logo">
+                <i class="fas fa-chart-line"></i>
+                <span>股票财务分析</span>
+            </a>
+        </div>
+        <div class="header-center">
+            <div class="search-box">
+                <input type="text" id="stockSearch" placeholder="输入股票代码/名称">
+                <button onclick="searchStock()">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="/my_stocks.html" class="nav-btn" title="自选股管理">
+                <i class="fas fa-star"></i>
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <i class="fas fa-moon" id="themeIcon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 股票基本信息卡片 -->
+        <section class="stock-info-card">
+            <div class="stock-header-main">
+                <!-- 股票名称和代码 -->
+                <div class="stock-title-section">
+                    <span class="stock-name" id="stockName">--</span>
+                    <span class="stock-code" id="stockCode">--</span>
+                </div>
+                
+                <!-- 行情数据 -->
+                <div class="stock-market-data">
+                    <div class="price-section">
+                        <span class="current-price" id="currentPrice">--</span>
+                        <span class="price-change" id="priceChange">--</span>
+                        <span class="price-change-percent" id="priceChangePercent">--</span>
+                    </div>
+                    <div class="market-stats">
+                        <span class="stat-label">市值</span>
+                        <span class="stat-value" id="marketCap">--</span>
+                        <span class="stat-update-time" id="updateTime"></span>
+                    </div>
+                </div>
+                
+                <!-- 自选股操作 -->
+                <div class="stock-actions">
+                    <button class="action-btn" id="addToMyStock" onclick="showAddToMyStock()" title="添加到自选股">
+                        <i class="fas fa-star"></i>
+                    </button>
+                    <button class="action-btn" id="removeFromMyStock" onclick="removeFromMyStock()" title="移除自选股" style="display:none;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 关键指标概览 -->
+        <section class="metrics-overview">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">最新季度毛利率</div>
+                    <div class="metric-value" id="latestGrossMargin">--</div>
+                    <div class="metric-change" id="grossMarginChange">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">最新季度营收同比</div>
+                    <div class="metric-value" id="latestRevenueYoy">--</div>
+                    <div class="metric-change" id="revenueYoyChange">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">最新季度扣非同比</div>
+                    <div class="metric-value" id="latestKfeYoy">--</div>
+                    <div class="metric-change" id="kfeYoyChange">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">扣非净利润TTM</div>
+                    <div class="metric-value" id="latestKfeTtm">--</div>
+                    <div class="metric-unit">亿元</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">最新季度营收环比</div>
+                    <div class="metric-value" id="latestRevenueQoq">--</div>
+                    <div class="metric-change" id="revenueQoqChange">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">最新季度扣非环比</div>
+                    <div class="metric-value" id="latestKfeQoq">--</div>
+                    <div class="metric-change" id="kfeQoqChange">--</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 图表区域 -->
+        <section class="charts-section">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>季度指标趋势</h3>
+                    <div class="chart-controls">
+                        <button class="chart-btn active" data-metric="gross_margin">毛利率</button>
+                        <button class="chart-btn" data-metric="revenue_yoy">营收同比</button>
+                        <button class="chart-btn" data-metric="revenue_qoq">营收环比</button>
+                        <button class="chart-btn" data-metric="kfe_np_yoy">扣非同比</button>
+                        <button class="chart-btn" data-metric="kfe_np_qoq">扣非环比</button>
+                        <button class="chart-btn" data-metric="kfe_np_ttm_w">扣非TTM</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="metricsChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 数据表格 -->
+        <section class="data-table-section">
+            <div class="table-header">
+                <h3>季度财务指标明细</h3>
+                <div class="table-controls">
+                    <button class="export-btn" onclick="exportData()">
+                        <i class="fas fa-download"></i> 导出数据
+                    </button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table" id="metricsTable">
+                    <thead>
+                        <tr>
+                            <th>报告期</th>
+                            <th>毛利率(%)</th>
+                            <th>营收同比(%)</th>
+                            <th>营收环比(%)</th>
+                            <th>净利润同比(%)</th>
+                            <th>扣非同比(%)</th>
+                            <th>扣非环比(%)</th>
+                            <th>扣非TTM(亿)</th>
+                            <th>营收(亿)</th>
+                            <th>净利润(亿)</th>
+                            <th>EPS(元)</th>
+                            <th>ROE(%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- 动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 盈利预测 -->
+        <section class="forecast-section">
+            <div class="section-header">
+                <h3>盈利预测</h3>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table" id="forecastTable">
+                    <thead>
+                        <tr id="forecastHeader">
+                            <th>指标</th>
+                        </tr>
+                    </thead>
+                    <tbody id="forecastBody">
+                        <!-- 动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <p>数据来源：通达信F10 | 仅供参考，不构成投资建议</p>
+    </footer>
+
+    <!-- 加载遮罩 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>加载中...</span>
+        </div>
+    </div>
+
+    <!-- Toast提示组件 -->
+    <div id="toast" class="toast" style="display:none;">
+        <div class="toast-icon" id="toastIcon"></div>
+        <div class="toast-message" id="toastMessage"></div>
+    </div>
+
+    <!-- 添加到自选股弹窗 -->
+    <div id="addToMyStockModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加到自选股</h3>
+                <button class="modal-close" onclick="closeAddToMyStockModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>股票代码</label>
+                    <input type="text" id="modalStockCode" readonly>
+                </div>
+                <div class="form-group">
+                    <label>股票名称</label>
+                    <input type="text" id="modalStockName" readonly>
+                </div>
+                <div class="form-group">
+                    <label>选择池</label>
+                    <div class="pool-select">
+                        <label class="radio-label">
+                            <input type="radio" name="myStockPoolType" value="core">
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-fire"></i> 核心池
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="myStockPoolType" value="watch" checked>
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-eye"></i> 观察池
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea id="modalStockNotes" rows="3" placeholder="可选：添加备注信息"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAddToMyStockModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmAddToMyStock()">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initPage();
+        });
+        
+        // 自选股相关功能
+        let currentStockCode = '';
+        let currentStockName = '';
+        let currentStockInPool = null; // null表示不在自选股中，'core'或'watch'表示所在池
+        
+        // 检查当前股票是否在自选股中
+        async function checkMyStockStatus() {
+            if (!currentStockCode) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stocks`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    const stocks = result.data.stocks || [];
+                    const myStock = stocks.find(s => s.code === currentStockCode);
+                    
+                    currentStockInPool = myStock ? myStock.pool_type : null;
+                    
+                    // 更新按钮显示状态
+                    const addBtn = document.getElementById('addToMyStock');
+                    const removeBtn = document.getElementById('removeFromMyStock');
+                    
+                    if (currentStockInPool) {
+                        addBtn.style.display = 'none';
+                        removeBtn.style.display = 'flex';
+                    } else {
+                        addBtn.style.display = 'flex';
+                        removeBtn.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('检查自选股状态失败:', error);
+            }
+        }
+        
+        // 显示添加到自选股弹窗
+        function showAddToMyStock() {
+            currentStockCode = document.getElementById('stockCode').textContent;
+            currentStockName = document.getElementById('stockName').textContent;
+            
+            document.getElementById('modalStockCode').value = currentStockCode;
+            document.getElementById('modalStockName').value = currentStockName;
+            document.getElementById('modalStockNotes').value = '';
+            document.querySelector('input[name="myStockPoolType"][value="watch"]').checked = true;
+            
+            document.getElementById('addToMyStockModal').style.display = 'flex';
+        }
+        
+        // Toast提示函数
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            // 设置类型样式
+            toast.className = `toast ${type}`;
+            
+            // 设置图标
+            const icons = {
+                success: '<i class="fas fa-check-circle"></i>',
+                error: '<i class="fas fa-times-circle"></i>',
+                info: '<i class="fas fa-info-circle"></i>'
+            };
+            toastIcon.innerHTML = icons[type] || icons.info;
+            
+            // 设置消息
+            toastMessage.textContent = message;
+            
+            // 显示提示
+            toast.style.display = 'flex';
+            
+            // 3秒后自动消失
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 关闭弹窗
+        function closeAddToMyStockModal() {
+            document.getElementById('addToMyStockModal').style.display = 'none';
+        }
+        
+        // 确认添加到自选股
+        async function confirmAddToMyStock() {
+            const poolType = document.querySelector('input[name="myStockPoolType"]:checked')?.value;
+            const notes = document.getElementById('modalStockNotes').value;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stock/${currentStockCode}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        pool_type: poolType,
+                        name: currentStockName,
+                        notes: notes
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    closeAddToMyStockModal();
+                    await checkMyStockStatus();
+                    showToast('添加成功！', 'success');
+                } else {
+                    showToast(result.message || '添加失败', 'error');
+                }
+            } catch (error) {
+                console.error('添加失败:', error);
+                showToast('添加失败，请稍后重试', 'error');
+            }
+        }
+        
+        // 移除自选股
+        async function removeFromMyStock() {
+            if (!confirm('确定要移除该自选股吗？')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stock/${currentStockCode}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    await checkMyStockStatus();
+                    showToast('已移除', 'info');
+                } else {
+                    showToast(result.message || '移除失败', 'error');
+                }
+            } catch (error) {
+                console.error('移除失败:', error);
+                showToast('移除失败，请稍后重试', 'error');
+            }
+        }
+        
+        // 点击弹窗背景关闭
+        document.getElementById('addToMyStockModal').addEventListener('click', function(e) {
+            if (e.target === this) closeAddToMyStockModal();
+        });
+        
+        // 监听股票信息加载完成事件
+        window.addEventListener('stockInfoLoaded', function(e) {
+            currentStockCode = e.detail.code;
+            currentStockName = e.detail.name;
+            checkMyStockStatus();
+        });
+    </script>
+</body>
+</html>
