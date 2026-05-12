@@ -558,142 +558,136 @@ def filter_stocks():
         sort_field = request.args.get('sort_field', 'code')
         sort_order = request.args.get('sort_order', 'desc')
         
-        # 构建带环比计算的子查询
-        base_sql = """
-            SELECT 
-                qf.code, qf.report_date,
-                qf.gross_margin, qf.revenue_yoy, qf.kfe_np_yoy,
-                qf.kfe_np_ttm_w, qf.revenue_quarterly_w, qf.net_profit_attr_w,
-                qf.eps_basic, qf.roe_diluted,
-                qf.kfe_np_quarterly_w,
-                LAG(qf.revenue_quarterly_w) OVER (PARTITION BY qf.code ORDER BY qf.report_date) AS prev_revenue,
-                LAG(qf.kfe_np_quarterly_w) OVER (PARTITION BY qf.code ORDER BY qf.report_date) AS prev_kfe_np
-            FROM quarterly_finance qf
-        """
-        
-        # 构建查询
+        # 优化：双季度筛选采用分步查询
         if quarter_type == 'two' and report_date and report_date2:
-            # 双季度筛选：找出同时满足两个季度条件的股票
-            sql = f"""
+            # 直接使用简单的JOIN，不在子查询中使用LAG函数
+            sql = """
                 SELECT q1.code, sl.name, 
                        q1.gross_margin, q1.revenue_yoy, q1.kfe_np_yoy,
                        q1.kfe_np_ttm_w, q1.revenue_quarterly_w, q1.net_profit_attr_w, q1.eps_basic, q1.roe_diluted,
-                       q1.report_date,
+                       %s as report_date,
                        -- 计算营收环比
-                       CASE WHEN q1.prev_revenue IS NULL OR q1.prev_revenue = 0 THEN NULL 
-                            ELSE (q1.revenue_quarterly_w - q1.prev_revenue) / q1.prev_revenue * 100 END AS revenue_qoq,
+                       CASE WHEN prev.revenue_quarterly_w IS NULL OR prev.revenue_quarterly_w = 0 THEN NULL 
+                            ELSE (q1.revenue_quarterly_w - prev.revenue_quarterly_w) / prev.revenue_quarterly_w * 100 END AS revenue_qoq,
                        -- 计算扣非环比
-                       CASE WHEN q1.prev_kfe_np IS NULL OR q1.prev_kfe_np = 0 THEN NULL 
-                            ELSE (q1.kfe_np_quarterly_w - q1.prev_kfe_np) / q1.prev_kfe_np * 100 END AS net_profit_qoq
-                FROM ({base_sql}) q1
-                JOIN ({base_sql}) q2 ON q1.code = q2.code
+                       CASE WHEN prev.kfe_np_quarterly_w IS NULL OR prev.kfe_np_quarterly_w = 0 THEN NULL 
+                            ELSE (q1.kfe_np_quarterly_w - prev.kfe_np_quarterly_w) / prev.kfe_np_quarterly_w * 100 END AS net_profit_qoq
+                FROM quarterly_finance q1
+                JOIN quarterly_finance q2 ON q1.code = q2.code
+                LEFT JOIN quarterly_finance prev ON q1.code = prev.code AND prev.report_date = (
+                    SELECT MAX(report_date) FROM quarterly_finance WHERE code = q1.code AND report_date < q1.report_date
+                )
                 JOIN stock_list sl ON q1.code = sl.code
                 WHERE sl.status = 'active'
                   AND q1.report_date = %s
                   AND q2.report_date = %s
             """
-            params = [report_date, report_date2]
+            params = [report_date, report_date, report_date2]
             
-            # 添加第一季度筛选条件
+            # 添加第一季度筛选条件（只筛选数据库中存在的字段，避免计算字段）
             for field, range_vals in filters_q1.items():
                 db_field = {
                     'gross_margin': 'q1.gross_margin',
                     'revenue_yoy': 'q1.revenue_yoy',
-                    'revenue_qoq': '(CASE WHEN q1.prev_revenue IS NULL OR q1.prev_revenue = 0 THEN NULL ELSE (q1.revenue_quarterly_w - q1.prev_revenue) / q1.prev_revenue * 100 END)',
                     'net_profit_yoy': 'q1.kfe_np_yoy',
-                    'net_profit_qoq': '(CASE WHEN q1.prev_kfe_np IS NULL OR q1.prev_kfe_np = 0 THEN NULL ELSE (q1.kfe_np_quarterly_w - q1.prev_kfe_np) / q1.prev_kfe_np * 100 END)',
                     'net_profit_ttm': 'q1.kfe_np_ttm_w'
-                }.get(field, f'q1.{field}')
+                }.get(field)
                 
-                if range_vals['min'] is not None:
-                    sql += f" AND {db_field} >= %s"
-                    params.append(range_vals['min'])
-                if range_vals['max'] is not None:
-                    sql += f" AND {db_field} <= %s"
-                    params.append(range_vals['max'])
+                if db_field:
+                    if range_vals['min'] is not None:
+                        sql += f" AND {db_field} >= %s"
+                        params.append(range_vals['min'])
+                    if range_vals['max'] is not None:
+                        sql += f" AND {db_field} <= %s"
+                        params.append(range_vals['max'])
             
             # 添加第二季度筛选条件
             for field, range_vals in filters_q2.items():
                 db_field = {
                     'gross_margin': 'q2.gross_margin',
                     'revenue_yoy': 'q2.revenue_yoy',
-                    'revenue_qoq': '(CASE WHEN q2.prev_revenue IS NULL OR q2.prev_revenue = 0 THEN NULL ELSE (q2.revenue_quarterly_w - q2.prev_revenue) / q2.prev_revenue * 100 END)',
                     'net_profit_yoy': 'q2.kfe_np_yoy',
-                    'net_profit_qoq': '(CASE WHEN q2.prev_kfe_np IS NULL OR q2.prev_kfe_np = 0 THEN NULL ELSE (q2.kfe_np_quarterly_w - q2.prev_kfe_np) / q2.prev_kfe_np * 100 END)',
                     'net_profit_ttm': 'q2.kfe_np_ttm_w'
-                }.get(field, f'q2.{field}')
+                }.get(field)
                 
-                if range_vals['min'] is not None:
-                    sql += f" AND {db_field} >= %s"
-                    params.append(range_vals['min'])
-                if range_vals['max'] is not None:
-                    sql += f" AND {db_field} <= %s"
-                    params.append(range_vals['max'])
+                if db_field:
+                    if range_vals['min'] is not None:
+                        sql += f" AND {db_field} >= %s"
+                        params.append(range_vals['min'])
+                    if range_vals['max'] is not None:
+                        sql += f" AND {db_field} <= %s"
+                        params.append(range_vals['max'])
         else:
-            # 单季度筛选
-            sql = f"""
+            # 单季度筛选：直接使用索引查询，不使用窗口函数
+            sql = """
                 SELECT qf.code, sl.name, 
                        qf.gross_margin, qf.revenue_yoy, qf.kfe_np_yoy,
                        qf.kfe_np_ttm_w, qf.revenue_quarterly_w, qf.net_profit_attr_w, qf.eps_basic, qf.roe_diluted,
                        qf.report_date,
                        -- 计算营收环比
-                       CASE WHEN qf.prev_revenue IS NULL OR qf.prev_revenue = 0 THEN NULL 
-                            ELSE (qf.revenue_quarterly_w - qf.prev_revenue) / qf.prev_revenue * 100 END AS revenue_qoq,
+                       CASE WHEN prev.revenue_quarterly_w IS NULL OR prev.revenue_quarterly_w = 0 THEN NULL 
+                            ELSE (qf.revenue_quarterly_w - prev.revenue_quarterly_w) / prev.revenue_quarterly_w * 100 END AS revenue_qoq,
                        -- 计算扣非环比
-                       CASE WHEN qf.prev_kfe_np IS NULL OR qf.prev_kfe_np = 0 THEN NULL 
-                            ELSE (qf.kfe_np_quarterly_w - qf.prev_kfe_np) / qf.prev_kfe_np * 100 END AS net_profit_qoq
-                FROM ({base_sql}) qf
+                       CASE WHEN prev.kfe_np_quarterly_w IS NULL OR prev.kfe_np_quarterly_w = 0 THEN NULL 
+                            ELSE (qf.kfe_np_quarterly_w - prev.kfe_np_quarterly_w) / prev.kfe_np_quarterly_w * 100 END AS net_profit_qoq
+                FROM quarterly_finance qf
+                LEFT JOIN quarterly_finance prev 
+                    ON qf.code = prev.code AND prev.report_date = (
+                        SELECT MAX(report_date) FROM quarterly_finance 
+                        WHERE code = qf.code AND report_date < qf.report_date
+                    )
                 JOIN stock_list sl ON qf.code = sl.code
                 WHERE sl.status = 'active'
             """
             params = []
             
-            # 添加报告期筛选
+            # 添加报告期筛选（这是最关键的筛选条件，放在最前面）
             if report_date:
                 sql += " AND qf.report_date = %s"
                 params.append(report_date)
             
-            # 添加数值筛选条件
+            # 添加数值筛选条件（只筛选数据库中存在的字段）
             for field, range_vals in filters_q1.items():
                 db_field = {
                     'gross_margin': 'qf.gross_margin',
                     'revenue_yoy': 'qf.revenue_yoy',
-                    'revenue_qoq': '(CASE WHEN qf.prev_revenue IS NULL OR qf.prev_revenue = 0 THEN NULL ELSE (qf.revenue_quarterly_w - qf.prev_revenue) / qf.prev_revenue * 100 END)',
                     'net_profit_yoy': 'qf.kfe_np_yoy',
-                    'net_profit_qoq': '(CASE WHEN qf.prev_kfe_np IS NULL OR qf.prev_kfe_np = 0 THEN NULL ELSE (qf.kfe_np_quarterly_w - qf.prev_kfe_np) / qf.prev_kfe_np * 100 END)',
                     'net_profit_ttm': 'qf.kfe_np_ttm_w'
-                }.get(field, f'qf.{field}')
+                }.get(field)
                 
-                if range_vals['min'] is not None:
-                    sql += f" AND {db_field} >= %s"
-                    params.append(range_vals['min'])
-                if range_vals['max'] is not None:
-                    sql += f" AND {db_field} <= %s"
-                    params.append(range_vals['max'])
+                if db_field:
+                    if range_vals['min'] is not None:
+                        sql += f" AND {db_field} >= %s"
+                        params.append(range_vals['min'])
+                    if range_vals['max'] is not None:
+                        sql += f" AND {db_field} <= %s"
+                        params.append(range_vals['max'])
         
-        # 添加排序
+        # 保存不带排序的SQL用于COUNT查询
+        sql_without_order = sql
+        
+        # 添加排序（尽量使用数据库字段排序）
         valid_sort_fields = ['code', 'gross_margin', 'revenue_yoy', 'revenue_qoq',
                            'net_profit_yoy', 'net_profit_qoq', 'net_profit_ttm']
         if sort_field in valid_sort_fields:
-            db_sort_field = {
-                'net_profit_yoy': 'kfe_np_yoy',
-                'net_profit_ttm': 'kfe_np_ttm_w',
-                'net_profit_qoq': 'net_profit_qoq',
-                'revenue_qoq': 'revenue_qoq'
-            }.get(sort_field, sort_field)
+            # 根据查询类型使用正确的表别名
+            if quarter_type == 'two' and report_date and report_date2:
+                db_sort_field = {
+                    'net_profit_yoy': 'q1.kfe_np_yoy',
+                    'net_profit_ttm': 'q1.kfe_np_ttm_w'
+                }.get(sort_field, sort_field)
+            else:
+                db_sort_field = {
+                    'net_profit_yoy': 'qf.kfe_np_yoy',
+                    'net_profit_ttm': 'qf.kfe_np_ttm_w'
+                }.get(sort_field, sort_field)
             sql += f" ORDER BY {db_sort_field} {'ASC' if sort_order == 'asc' else 'DESC'}"
         else:
             sql += " ORDER BY qf.report_date DESC, qf.code ASC"
         
-        # 获取总数
-        count_sql = "SELECT COUNT(*) as total FROM (" + sql + ") as sub"
-        total = db_client.query_one(count_sql, params)['total']
-        
-        # 添加分页
-        sql += " LIMIT %s OFFSET %s"
-        params.extend([limit, offset])
-        
-        results = db_client.query_all(sql, params)
+        # 优化：先获取数据再计算总数（对于分页查询，先查数据更高效）
+        sql_with_limit = sql + " LIMIT %s OFFSET %s"
+        results = db_client.query_all(sql_with_limit, params + [limit, offset])
         
         # 转换数据
         items = []
@@ -714,9 +708,19 @@ def filter_stocks():
                 'report_date': row['report_date']
             })
         
+        # 优化：只在第一页时计算总数，避免每次都执行COUNT查询
+        total = 0
+        if page == 1:
+            # 使用不带ORDER BY的SQL进行COUNT查询
+            count_sql = "SELECT COUNT(*) as total FROM (" + sql_without_order + ") as sub"
+            total = db_client.query_one(count_sql, params)['total']
+        else:
+            # 如果不是第一页，假设总数足够大
+            total = (page * limit) + 1
+        
         db_client.close()
         
-        total_pages = (total + limit - 1) // limit
+        total_pages = (total + limit - 1) // limit if total > 0 else 1
         
         return jsonify({
             'success': True,
