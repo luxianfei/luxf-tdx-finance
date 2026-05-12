@@ -182,6 +182,30 @@
                 </table>
             </div>
         </section>
+
+        <!-- 互动问答信息 -->
+        <section class="qa-section">
+            <div class="section-header">
+                <h3>互动问答信息</h3>
+                <div class="qa-actions">
+                    <div class="qa-search">
+                        <input type="text" id="qaSearchInput" placeholder="搜索提问问题或回答..." class="search-input">
+                        <button class="search-btn" onclick="searchQA()">
+                            <i class="fas fa-search"></i> 检索
+                        </button>
+                    </div>
+                    <button class="refresh-btn" onclick="refreshQAData()">
+                        <i class="fas fa-refresh"></i> 刷新
+                    </button>
+                </div>
+            </div>
+            <div class="qa-container" id="qaContainer">
+                <!-- 动态生成问答列表 -->
+            </div>
+            <div class="qa-pagination" id="qaPagination">
+                <!-- 分页控件 -->
+            </div>
+        </section>
     </main>
 
     <!-- 页脚 -->
