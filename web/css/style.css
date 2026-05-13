@@ -868,12 +868,20 @@ div.Pfosts.tosan,
 }
 
 .qa-icon.question-icon {
+<<<<<<< HEAD
     background-color: var(--primary-color);
+=======
+    background-color: #3b82f6;
+>>>>>>> 616180d27539f3aaf27d1ea7b7bf4561895305fc
     color: white;
 }
 
 .qa-icon.answer-icon {
+<<<<<<< HEAD
     background-color: var(--success-color);
+=======
+    background-color: #ef4444;
+>>>>>>> 616180d27539f3aaf27d1ea7b7bf4561895305fc
     color: white;
 }
 
@@ -924,6 +932,7 @@ div.Pfosts.tosan,
     border-radius: 2px;
 }
 
+<<<<<<< HEAD
 /* 深色主题下的高亮样式 */
 [data-theme="dark"] .highlight {
     background-color: #fbbf24;
@@ -936,6 +945,8 @@ div.Pfosts.tosan,
     color: #1a1510;
 }
 
+=======
+>>>>>>> 616180d27539f3aaf27d1ea7b7bf4561895305fc
 /* 分页控件 */
 .qa-pagination {
     display: flex;
