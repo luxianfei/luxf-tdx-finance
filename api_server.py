@@ -9,6 +9,7 @@ import os
 import sys
 import json
 import logging
+import re
 from datetime import datetime
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
@@ -786,6 +787,7 @@ def get_my_stocks():
     try:
         db_client = MySQLClient(MYSQL_CONFIG)
         
+        # 获取股票列表
         sql = """
             SELECT code, name, pool_type, notes, added_at 
             FROM my_stock 
@@ -794,6 +796,9 @@ def get_my_stocks():
         results = db_client.query_all(sql)
         
         stocks = []
+        core_count = 0
+        watch_count = 0
+        
         for row in results:
             added_at = row['added_at']
             if added_at:
@@ -806,12 +811,24 @@ def get_my_stocks():
                 'notes': row.get('notes', ''),
                 'created_at': added_at
             })
+            
+            # 统计数量
+            if row['pool_type'] == 'core':
+                core_count += 1
+            else:
+                watch_count += 1
         
         db_client.close()
         return jsonify({
             'success': True,
             'message': '获取成功',
-            'data': {'stocks': stocks}
+            'data': {
+                'stocks': stocks,
+                'counts': {
+                    'core': core_count,
+                    'watch': watch_count
+                }
+            }
         })
     except Exception as e:
         logger.error(f"获取自选股失败: {e}")
@@ -859,6 +876,71 @@ def delete_my_stock(code):
         return jsonify({'success': True, 'message': '删除成功', 'data': None})
     except Exception as e:
         logger.error(f"删除自选股失败: {e}")
+        return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
+@app.route('/api/my_stock/batch', methods=['POST'])
+def batch_add_my_stock():
+    try:
+        data = request.get_json()
+        input_text = data.get('input', '').strip()
+        pool_type = data.get('pool_type', 'watch')
+        
+        if not input_text:
+            return jsonify({'success': False, 'message': '输入不能为空', 'data': None})
+        
+        db_client = MySQLClient(MYSQL_CONFIG)
+        
+        # 尝试先按代码查找，如果找不到再按名称查找
+        code = None
+        name = None
+        
+        # 尝试从输入中提取股票代码
+        # 支持格式：纯代码(688456)、代码+名称(688456 有研粉材)、纯名称(有研粉材)
+        code_match = re.match(r'^(\d{6})', input_text)
+        if code_match:
+            # 提取前6位数字作为代码
+            code = code_match.group(1)
+            # 按代码查询名称
+            sql = "SELECT name FROM stock_list WHERE code = %s"
+            result = db_client.query_one(sql, (code,))
+            if result:
+                name = result['name']
+        else:
+            # 按名称查询代码
+            sql = "SELECT code, name FROM stock_list WHERE name LIKE %s"
+            result = db_client.query_one(sql, (f"%{input_text}%",))
+            if result:
+                code = result['code']
+                name = result['name']
+        
+        if not code:
+            db_client.close()
+            return jsonify({'success': False, 'message': f'未找到股票: {input_text}', 'data': None})
+        
+        # 检查是否已存在
+        sql = "SELECT * FROM my_stock WHERE code = %s"
+        exists = db_client.query_one(sql, (code,))
+        
+        # 插入或更新
+        sql = """
+            INSERT INTO my_stock (code, name, pool_type, added_at)
+            VALUES (%s, %s, %s, NOW())
+            ON DUPLICATE KEY UPDATE
+            name = VALUES(name), pool_type = VALUES(pool_type), updated_at = NOW()
+        """
+        db_client.execute(sql, (code, name, pool_type))
+        db_client.commit()
+        
+        db_client.close()
+        
+        return jsonify({
+            'success': True, 
+            'message': '添加成功', 
+            'data': {'code': code, 'name': name},
+            'exists': exists is not None
+        })
+    except Exception as e:
+        logger.error(f"批量添加自选股失败: {e}")
         return jsonify({'success': False, 'message': str(e), 'data': None}), 500
 
 @app.route('/api/my_stock/<code>/move', methods=['PUT'])

@@ -40,9 +40,17 @@
         <section class="stock-info-card">
             <div class="section-header">
                 <h2><i class="fas fa-star"></i> 自选股管理</h2>
-                <button class="refresh-hudong-btn" onclick="refreshAllHudongData()" title="刷新所有自选股的互动问答数据">
-                    <i class="fas fa-comments"></i> 刷新互动数据
-                </button>
+                <div class="action-buttons">
+                    <button class="import-btn" onclick="showImportModal()" title="批量导入自选股">
+                        <i class="fas fa-upload"></i> 批量导入
+                    </button>
+                    <button class="export-btn" onclick="exportMyStocks()" title="导出自选股">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                    <button class="refresh-hudong-btn" onclick="refreshAllHudongData()" title="刷新所有自选股的互动问答数据">
+                        <i class="fas fa-comments"></i> 刷新互动数据
+                    </button>
+                </div>
             </div>
             
             <!-- 池类型切换 -->
@@ -106,6 +114,43 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeAddModal()">取消</button>
                 <button class="btn btn-primary" onclick="confirmAddStock()">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量导入弹窗 -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>批量导入自选股</h3>
+                <button class="modal-close" onclick="closeImportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>选择文件或粘贴股票代码</label>
+                    <input type="file" id="importFile" accept=".txt,.csv" onchange="handleFileSelect()">
+                    <textarea id="importText" rows="8" placeholder="每行一个股票代码或股票名称&#10;&#10;例如：&#10;688456&#10;000858&#10;贵州茅台&#10;紫光股份"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>目标池</label>
+                    <div class="pool-select">
+                        <label class="radio-label">
+                            <input type="radio" name="importPool" value="core">
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-fire"></i> 核心池
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="importPool" value="watch" checked>
+                            <span class="radio-custom"></span>
+                            <i class="fas fa-eye"></i> 观察池
+                        </label>
+                    </div>
+                </div>
+                <div id="importResult" class="import-result"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeImportModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmImport()">开始导入</button>
             </div>
         </div>
     </div>
@@ -200,11 +245,10 @@
                     listContainer.innerHTML = stocks.map(stock => `
                         <div class="stock-item">
                             <div class="stock-info" onclick="goToDetail('${stock.code}')">
-                                <div class="stock-name-row">
-                                    <span class="stock-name">${stock.name || stock.code}</span>
-                                    <span class="pool-badge ${stock.pool_type}">${stock.pool_type === 'core' ? '核心池' : '观察池'}</span>
-                                </div>
-                                <div class="stock-code">${stock.code}</div>
+                                <span class="pool-badge ${stock.pool_type}">${stock.pool_type === 'core' ? '核心池' : '观察池'}</span>
+                                <span class="stock-code">${stock.code}</span>
+                                <span class="stock-name">${stock.name || stock.code}</span>
+                                ${stock.notes ? `<span class="stock-notes">${stock.notes}</span>` : ''}
                             </div>
                             <div class="stock-actions">
                                 <button class="action-btn" onclick="showMoveModal('${stock.code}', '${stock.name}', '${stock.pool_type}')" title="移动">
@@ -353,6 +397,126 @@
             } catch (error) {
                 console.error('添加失败:', error);
                 alert('添加失败，请稍后重试');
+            }
+        }
+
+        // 显示批量导入弹窗
+        function showImportModal() {
+            document.getElementById('importFile').value = '';
+            document.getElementById('importText').value = '';
+            document.getElementById('importResult').innerHTML = '';
+            document.querySelector('input[name="importPool"][value="watch"]').checked = true;
+            document.getElementById('importModal').style.display = 'flex';
+        }
+
+        // 关闭批量导入弹窗
+        function closeImportModal() {
+            document.getElementById('importModal').style.display = 'none';
+        }
+
+        // 处理文件选择
+        function handleFileSelect() {
+            const fileInput = document.getElementById('importFile');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('importText').value = e.target.result;
+                };
+                reader.readAsText(file, 'UTF-8');
+            }
+        }
+
+        // 确认批量导入
+        async function confirmImport() {
+            const text = document.getElementById('importText').value.trim();
+            if (!text) {
+                alert('请输入股票代码或选择文件');
+                return;
+            }
+
+            const poolType = document.querySelector('input[name="importPool"]:checked')?.value || 'watch';
+            const lines = text.split(/\r?\n/).filter(line => line.trim());
+            
+            const resultDiv = document.getElementById('importResult');
+            resultDiv.innerHTML = '<div class="loading">正在导入...</div>';
+
+            let successCount = 0;
+            let failCount = 0;
+            let existsCount = 0;
+
+            for (let i = 0; i < lines.length; i++) {
+                const input = lines[i].trim();
+                if (!input) continue;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/my_stock/batch`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            input: input,
+                            pool_type: poolType
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        if (result.exists) {
+                            existsCount++;
+                        } else {
+                            successCount++;
+                        }
+                    } else {
+                        failCount++;
+                    }
+                } catch (error) {
+                    failCount++;
+                }
+
+                resultDiv.innerHTML = `<div style="color: var(--text-secondary);">正在导入: ${i + 1}/${lines.length}</div>`;
+            }
+
+            resultDiv.innerHTML = `
+                <div style="color: var(--success-color);">成功添加: ${successCount} 只</div>
+                <div style="color: var(--warning-color);">已存在: ${existsCount} 只</div>
+                <div style="color: var(--danger-color);">导入失败: ${failCount} 只</div>
+            `;
+
+            await loadMyStocks();
+        }
+
+        // 导出自选股
+        async function exportMyStocks() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stocks`);
+                const result = await response.json();
+
+                if (!result.success || !result.data?.stocks) {
+                    alert('获取自选股列表失败');
+                    return;
+                }
+
+                const stocks = result.data.stocks;
+                let content = '';
+                
+                stocks.forEach(stock => {
+                    content += `${stock.code} ${stock.name}\n`;
+                });
+
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `自选股_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                alert(`成功导出 ${stocks.length} 只自选股`);
+            } catch (error) {
+                console.error('导出失败:', error);
+                alert('导出失败，请稍后重试');
             }
         }
 

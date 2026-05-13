@@ -3,28 +3,10 @@
     {
       "name": "Default",
       "files": [
-<<<<<<< HEAD
-        "database/mysql_client.py",
-        "fetchers/__pycache__/incremental_updater.cpython-313.pyc",
-        "fetchers/incremental_updater.py",
-        ".vscode/changelists.json",
-        "database/__pycache__/mysql_client.cpython-313.pyc",
         "web/my_stocks.html",
-        "web/css/style.css"
-=======
-        "fetchers/luxf_fetch_ths_hudong.py",
         ".vscode/changelists.json",
         "api_server.py",
-        "fetchers/__pycache__/luxf_fetch_ths_hudong.cpython-313.pyc",
-        "web/js/app.js",
-        "web/stock_detail.html",
-        "web/css/style.css",
-        "database/__pycache__/mysql_client.cpython-313.pyc",
-        "database/mysql_client.py",
-        "create_qa_table.py",
-        "fetch_qa_to_db.py",
-        "__pycache__/fetch_qa_to_db.cpython-313.pyc"
->>>>>>> 616180d27539f3aaf27d1ea7b7bf4561895305fc
+        "web/css/style.css"
       ]
     }
   ],
