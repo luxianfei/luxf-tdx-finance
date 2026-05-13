@@ -214,6 +214,258 @@ def update_all():
         logger.error(f"执行增量更新失败: {e}")
         update_status['running'] = False
         return jsonify({
+                'success': False,
+                'message': str(e),
+                'data': None
+            }), 500
+
+
+@app.route('/api/update/all_market_data', methods=['POST'])
+def update_all_market_data():
+    """更新全市场行情数据（通过百度财经接口，使用多线程）"""
+    if update_status['running']:
+        return jsonify({
+            'success': False,
+            'message': '正在执行更新，请等待完成',
+            'data': None
+        }), 400
+    
+    try:
+        import threading
+        import queue
+        import random
+        import time
+        from fetchers.baidu_finance_fetcher import BaiduFinanceFetcher, StockMarketDataDB
+        
+        update_status['running'] = True
+        update_status['progress'] = 0
+        update_status['message'] = '开始更新全市场行情数据...'
+        
+        # 获取全市场股票列表
+        db_client = MySQLClient(MYSQL_CONFIG)
+        sql = 'SELECT code, name FROM stock_list'
+        stocks = db_client.query_all(sql)
+        db_client.close()
+        
+        if not stocks:
+            update_status['running'] = False
+            return jsonify({
+                'success': False,
+                'message': '股票列表为空',
+                'data': None
+            })
+        
+        total = len(stocks)
+        success_count = [0]
+        fail_count = [0]
+        failed_stocks = []
+        processed_count = [0]
+        lock = threading.Lock()
+        
+        # 创建数据库操作对象
+        db = StockMarketDataDB(MYSQL_CONFIG)
+        db.connect()
+        db.create_table()
+        
+        # 任务队列
+        task_queue = queue.Queue()
+        for stock in stocks:
+            task_queue.put(stock)
+        
+        def worker():
+            """工作线程：抓取股票行情数据"""
+            local_fetcher = BaiduFinanceFetcher()  # 每个线程使用独立的fetcher
+            
+            while not task_queue.empty():
+                try:
+                    stock = task_queue.get(timeout=5)
+                    code = stock['code']
+                    name = stock['name']
+                    
+                    # 反爬机制：随机延迟
+                    time.sleep(random.uniform(0.2, 0.5))
+                    
+                    # 抓取数据
+                    data = local_fetcher.fetch_stock_data(code)
+                    
+                    with lock:
+                        if data:
+                            db.save_data(data)
+                            success_count[0] += 1
+                            logger.info(f"成功更新股票 {code} ({name}) 的行情数据")
+                        else:
+                            fail_count[0] += 1
+                            failed_stocks.append(f"{code} ({name})")
+                            logger.warning(f"未能获取股票 {code} ({name}) 的行情数据")
+                        
+                        processed_count[0] += 1
+                        
+                        # 每更新100只股票刷新一次进度
+                        if processed_count[0] % 100 == 0 or processed_count[0] == total:
+                            update_status['progress'] = (processed_count[0] / total) * 100
+                            update_status['message'] = f'已更新 {processed_count[0]}/{total} 只股票（成功: {success_count[0]}, 失败: {fail_count[0]}）'
+                    
+                    task_queue.task_done()
+                    
+                except queue.Empty:
+                    break
+                except Exception as e:
+                    with lock:
+                        fail_count[0] += 1
+                        if stock:
+                            failed_stocks.append(f"{code} ({name})")
+                        logger.error(f"更新股票行情数据失败: {e}")
+        
+        # 创建线程池（最多10个线程，避免请求过快）
+        num_threads = min(10, total)
+        threads = []
+        
+        update_status['message'] = f'正在启动 {num_threads} 个线程...'
+        
+        for _ in range(num_threads):
+            t = threading.Thread(target=worker)
+            t.daemon = True
+            t.start()
+            threads.append(t)
+        
+        # 等待所有任务完成
+        task_queue.join()
+        
+        # 确保所有线程结束
+        for t in threads:
+            t.join(timeout=30)
+        
+        db.close()
+        
+        message = f"全市场行情数据更新完成！成功 {success_count[0]} 只，失败 {fail_count[0]} 只"
+        if failed_stocks:
+            message += f"，失败股票: {', '.join(failed_stocks[:10])}"
+            if len(failed_stocks) > 10:
+                message += f"...(共 {len(failed_stocks)} 只)"
+        
+        update_status['progress'] = 100
+        update_status['message'] = message
+        update_status['running'] = False
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'data': {
+                'total': total,
+                'success': success_count[0],
+                'failed': fail_count[0],
+                'failed_stocks': failed_stocks
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"更新全市场行情数据失败: {e}")
+        update_status['running'] = False
+        return jsonify({
+            'success': False,
+            'message': str(e),
+            'data': None
+        }), 500
+
+
+@app.route('/api/update/all_qa_data', methods=['POST'])
+def update_all_qa_data():
+    """更新全市场互动问答数据（通过同花顺接口）"""
+    if update_status['running']:
+        return jsonify({
+            'success': False,
+            'message': '正在执行更新，请等待完成',
+            'data': None
+        }), 400
+    
+    try:
+        from fetchers.luxf_fetch_ths_hudong import fetch_qa_data
+        
+        update_status['running'] = True
+        update_status['progress'] = 0
+        update_status['message'] = '开始更新全市场互动信息...'
+        
+        # 获取全市场股票列表
+        db_client = MySQLClient(MYSQL_CONFIG)
+        sql = 'SELECT code, name FROM stock_list'
+        stocks = db_client.query_all(sql)
+        db_client.close()
+        
+        if not stocks:
+            update_status['running'] = False
+            return jsonify({
+                'success': False,
+                'message': '股票列表为空',
+                'data': None
+            })
+        
+        total = len(stocks)
+        success_count = 0
+        fail_count = 0
+        failed_stocks = []
+        
+        try:
+            for i, stock in enumerate(stocks, 1):
+                code = stock['code']
+                name = stock['name']
+                
+                try:
+                    update_status['message'] = f'正在更新股票 {code} ({name}) 的互动信息 [{i}/{total}]'
+                    update_status['progress'] = (i / total) * 100
+                    
+                    # 调用抓取互动问答数据的方法
+                    qa_data = fetch_qa_data(code, fetch_all=False, max_years=3)
+                    
+                    if qa_data and len(qa_data) > 0:
+                        # 保存到数据库
+                        db_client = MySQLClient(MYSQL_CONFIG)
+                        count = db_client.batch_insert_stock_qa(qa_data)
+                        db_client.close()
+                        
+                        success_count += 1
+                        logger.info(f"成功更新股票 {code} ({name}) 的互动问答数据，新增 {count} 条")
+                    else:
+                        fail_count += 1
+                        failed_stocks.append(f"{code} ({name})")
+                        logger.warning(f"未能获取股票 {code} ({name}) 的互动问答数据")
+                    
+                    # 添加延迟避免请求过快
+                    import time
+                    time.sleep(0.5)
+                    
+                except Exception as e:
+                    fail_count += 1
+                    failed_stocks.append(f"{code} ({name})")
+                    logger.error(f"更新股票 {code} ({name}) 的互动问答数据失败: {e}")
+            
+            message = f"全市场互动信息更新完成！成功 {success_count} 只，失败 {fail_count} 只"
+            if failed_stocks:
+                message += f"，失败股票: {', '.join(failed_stocks[:10])}"
+                if len(failed_stocks) > 10:
+                    message += f"...(共 {len(failed_stocks)} 只)"
+            
+            update_status['progress'] = 100
+            update_status['message'] = message
+            update_status['running'] = False
+            
+            return jsonify({
+                'success': True,
+                'message': message,
+                'data': {
+                    'total': total,
+                    'success': success_count,
+                    'failed': fail_count,
+                    'failed_stocks': failed_stocks
+                }
+            })
+            
+        finally:
+            update_status['running'] = False
+            
+    except Exception as e:
+        logger.error(f"更新全市场互动信息失败: {e}")
+        update_status['running'] = False
+        return jsonify({
             'success': False,
             'message': str(e),
             'data': None

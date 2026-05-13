@@ -240,6 +240,22 @@
             </div>
         </button>
         
+        <button class="update-btn" onclick="updateAllMarketData()" id="btnMarket">
+            <i class="fas fa-chart-bar"></i>
+            <div class="update-btn-content">
+                <span class="update-btn-title">更新全市场行情</span>
+                <span class="update-btn-desc">通过百度财经接口更新所有股票的行情数据到 stock_market_data 表</span>
+            </div>
+        </button>
+        
+        <button class="update-btn" onclick="updateAllQAData()" id="btnQA">
+            <i class="fas fa-comments"></i>
+            <div class="update-btn-content">
+                <span class="update-btn-title">更新全市场互动信息</span>
+                <span class="update-btn-desc">通过同花顺接口更新所有股票的互动问答数据到 stock_qa 表</span>
+            </div>
+        </button>
+        
         <button class="update-btn primary" onclick="updateAllData()" id="btnAll">
             <i class="fas fa-refresh"></i>
             <div class="update-btn-content">
@@ -283,6 +299,8 @@
         function disableButtons(disabled) {
             document.getElementById('btnSnapshot').disabled = disabled;
             document.getElementById('btnForecast').disabled = disabled;
+            document.getElementById('btnMarket').disabled = disabled;
+            document.getElementById('btnQA').disabled = disabled;
             document.getElementById('btnAll').disabled = disabled;
         }
         
@@ -477,6 +495,70 @@
                         total: result.data.market_snapshot.total,
                         success: result.data.market_snapshot.success + result.data.profit_forecast.success,
                         failed: result.data.market_snapshot.failed + result.data.profit_forecast.failed
+                    });
+                } else {
+                    showStatus('error', '更新失败', result.message);
+                }
+            } catch (error) {
+                showStatus('error', '更新失败', `网络错误: ${error.message}`);
+            } finally {
+                disableButtons(false);
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            }
+        }
+        
+        async function updateAllMarketData() {
+            disableButtons(true);
+            showStatus('processing', '更新全市场行情', '正在通过百度财经接口更新行情数据...', 0);
+            startProgressListening();
+            
+            try {
+                const response = await fetch('/api/update/all_market_data', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('success', '更新完成', result.message, 100);
+                    updateStats({
+                        total: result.data.total,
+                        success: result.data.success,
+                        failed: result.data.failed
+                    });
+                } else {
+                    showStatus('error', '更新失败', result.message);
+                }
+            } catch (error) {
+                showStatus('error', '更新失败', `网络错误: ${error.message}`);
+            } finally {
+                disableButtons(false);
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            }
+        }
+        
+        async function updateAllQAData() {
+            disableButtons(true);
+            showStatus('processing', '更新全市场互动信息', '正在通过百度财经接口更新互动问答数据...', 0);
+            startProgressListening();
+            
+            try {
+                const response = await fetch('/api/update/all_qa_data', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('success', '更新完成', result.message, 100);
+                    updateStats({
+                        total: result.data.total,
+                        success: result.data.success,
+                        failed: result.data.failed
                     });
                 } else {
                     showStatus('error', '更新失败', result.message);

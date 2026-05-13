@@ -650,11 +650,26 @@ class MySQLClient:
             status = VALUES(status)
         """
         try:
+            # 转换字段名：抓取器返回的是 'content' 和 'source'，需要转换为 'question' 和 'source_id'
+            converted_data = []
+            for item in data_list:
+                converted_item = {
+                    'code': item.get('code', ''),
+                    'ask_user': item.get('ask_user', ''),
+                    'ask_time': item.get('ask_time', ''),
+                    'answer_time': item.get('answer_time', ''),
+                    'question': item.get('question', item.get('content', '')),  # 支持两种字段名
+                    'answer': item.get('answer', ''),
+                    'status': item.get('status', '0'),
+                    'source_id': item.get('source_id', item.get('source', ''))  # 支持两种字段名
+                }
+                converted_data.append(converted_item)
+            
             conn = self.connect()
             with conn.cursor() as cursor:
-                cursor.executemany(sql, data_list)
+                cursor.executemany(sql, converted_data)
             self.commit()
-            return len(data_list)
+            return len(converted_data)
         except Exception as e:
             logger.error(f"批量插入互动问答失败: {e}")
             self.rollback()
