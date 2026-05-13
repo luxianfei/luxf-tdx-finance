@@ -41,34 +41,101 @@
         <!-- 股票基本信息卡片 -->
         <section class="stock-info-card">
             <div class="stock-header-main">
-                <!-- 股票名称和代码 -->
-                <div class="stock-title-section">
-                    <span class="stock-name" id="stockName">--</span>
-                    <span class="stock-code" id="stockCode">--</span>
-                </div>
-                
                 <!-- 行情数据 -->
                 <div class="stock-market-data">
-                    <div class="price-section">
-                        <span class="current-price" id="currentPrice">--</span>
-                        <span class="price-change" id="priceChange">--</span>
-                        <span class="price-change-percent" id="priceChangePercent">--</span>
+                    <!-- 操作按钮组 -->
+                    <div class="market-actions">
+                        <button class="action-btn" id="toggleMyStockBtn" onclick="toggleMyStock()" title="添加/删除自选股">
+                            <i class="fas fa-star"></i>
+                        </button>
+                        <button class="action-btn" id="refreshMarketBtn" onclick="refreshMarketData()" title="刷新行情数据">
+                            <i class="fas fa-refresh"></i>
+                        </button>
                     </div>
-                    <div class="market-stats">
-                        <span class="stat-label">市值</span>
-                        <span class="stat-value" id="marketCap">--</span>
-                        <span class="stat-update-time" id="updateTime"></span>
+                    
+                    <!-- 顶部信息区域 -->
+                    <div class="market-header">
+                        <!-- 股票代码和名称 -->
+                        <div class="stock-title-section">
+                            <span class="stock-code" id="stockCode">--</span>
+                            <span class="stock-name" id="stockName">--</span>
+                        </div>
+                        
+                        <!-- 价格信息 -->
+                        <div class="price-section">
+                            <span class="current-price" id="currentPrice">--</span>
+                            <span class="price-unit">元</span>
+                            <div class="price-change-info" id="priceChangeInfo">
+                                <span class="price-change" id="priceChange">--</span>
+                                <span class="price-change-percent" id="priceChangePercent">--</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- 自选股操作 -->
-                <div class="stock-actions">
-                    <button class="action-btn" id="addToMyStock" onclick="showAddToMyStock()" title="添加到自选股">
-                        <i class="fas fa-star"></i>
-                    </button>
-                    <button class="action-btn" id="removeFromMyStock" onclick="removeFromMyStock()" title="移除自选股" style="display:none;">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    
+                    <!-- 交易所和板块信息 -->
+                    <div class="stock-tags" id="stockTags">
+                        <span class="tag-item" id="exchangeTag">--</span>
+                        <span class="tag-item" id="plateTag">--</span>
+                        <span class="tag-item" id="industryTag">--</span>
+                    </div>
+                    
+                    <!-- 行情数据网格 -->
+                    <div class="market-grid">
+                        <div class="market-item">
+                            <span class="market-label">今开</span>
+                            <span class="market-value" id="openPrice">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">昨收</span>
+                            <span class="market-value" id="prevClose">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">最高</span>
+                            <span class="market-value high" id="highPrice">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">最低</span>
+                            <span class="market-value low" id="lowPrice">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">成交量</span>
+                            <span class="market-value" id="volume">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">成交额</span>
+                            <span class="market-value" id="amount">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">总市值</span>
+                            <span class="market-value" id="marketCap">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">总股本</span>
+                            <span class="market-value" id="totalShares">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">流通值</span>
+                            <span class="market-value" id="floatCap">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">换手率</span>
+                            <span class="market-value" id="turnoverRate">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">量比</span>
+                            <span class="market-value" id="volumeRatio">--</span>
+                        </div>
+                        <div class="market-item">
+                            <span class="market-label">市盈率(TTM)</span>
+                            <span class="market-value" id="peTtm">--</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 更新时间 -->
+                    <div class="update-info">
+                        <span class="update-time-label">更新时间：</span>
+                        <span class="update-time-value" id="updateTime">--</span>
+                    </div>
                 </div>
             </div>
         </section>

@@ -40,6 +40,21 @@ update_status = {
     'start_time': None
 }
 
+def _get_industry_name(industry_code):
+    """从数据库查询行业代码对应的中文名称"""
+    if not industry_code:
+        return ''
+    
+    try:
+        db_client = MySQLClient(MYSQL_CONFIG)
+        sql = "SELECT name FROM industry_map WHERE code = %s LIMIT 1"
+        result = db_client.query_one(sql, (industry_code,))
+        db_client.close()
+        return result.get('name', industry_code) if result else industry_code
+    except Exception as e:
+        logger.error(f"查询行业名称失败: {e}")
+        return industry_code
+
 # ============================================================
 # 增量行情信息更新接口
 # ============================================================
@@ -298,6 +313,190 @@ def get_stock_info(code):
     except Exception as e:
         logger.error(f"获取股票信息失败: {e}")
         return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
+@app.route('/api/stock/<code>/market_data', methods=['GET'])
+def get_stock_market_data(code):
+    """获取股票行情数据（从stock_market_data表获取）"""
+    try:
+        db_client = MySQLClient(MYSQL_CONFIG)
+        
+        # 优先从stock_market_data表获取最新行情数据（百度财经抓取的数据）
+        sql = """
+            SELECT * FROM stock_market_data 
+            WHERE code = %s 
+            ORDER BY crawl_time DESC 
+            LIMIT 1
+        """
+        result = db_client.query_one(sql, (code,))
+        
+        # 如果stock_market_data表没有数据，从market_snapshot表获取
+        if not result:
+            sql = """
+                SELECT * FROM market_snapshot 
+                WHERE code = %s 
+                ORDER BY snapshot_time DESC 
+                LIMIT 1
+            """
+            result = db_client.query_one(sql, (code,))
+        
+        # 从stock_list获取行业信息
+        stock_info = db_client.query_one("SELECT name, industry FROM stock_list WHERE code = %s", (code,))
+        
+        db_client.close()
+        
+        if result:
+            # 格式化更新时间
+            update_time = result.get('update_time', '')
+            if update_time and len(update_time) >= 14:
+                # 格式: 20260513161451 -> 2026-05-13 16:14:51
+                update_time = f"{update_time[0:4]}-{update_time[4:6]}-{update_time[6:8]} {update_time[8:10]}:{update_time[10:12]}:{update_time[12:14]}"
+            
+            # 获取行业信息并转换为中文
+            industry_code = result.get('industry') or (stock_info.get('industry') if stock_info else '')
+            industry_name = _get_industry_name(industry_code.strip())
+            
+            data = {
+                'code': code,
+                'name': result.get('name') or (stock_info.get('name') if stock_info else ''),
+                'exchange': result.get('exchange') or ('上海交易所' if code.startswith('6') else '深圳交易所'),
+                'plate': result.get('plate') or '',
+                'industry': industry_name,
+                'current_price': float(result['current_price']) if result.get('current_price') else (float(result['price']) if result.get('price') else None),
+                'price_change': float(result['price_change']) if result.get('price_change') else (float(result['change']) if result.get('change') else None),
+                'change_percent': float(result['change_percent']) if result.get('change_percent') else (float(result['change_percent']) if result.get('change_percent') else None),
+                'open_price': float(result['open_price']) if result.get('open_price') else (float(result['open']) if result.get('open') else None),
+                'prev_close': float(result['prev_close']) if result.get('prev_close') else (float(result['prev_close']) if result.get('prev_close') else None),
+                'high_price': float(result['high_price']) if result.get('high_price') else (float(result['high']) if result.get('high') else None),
+                'low_price': float(result['low_price']) if result.get('low_price') else (float(result['low']) if result.get('low') else None),
+                'volume': int(result['volume']) if result.get('volume') else None,
+                'amount': float(result['amount']) if result.get('amount') else (float(result['amount']) * 10000 if result.get('amount') else None),
+                'market_cap': float(result['market_cap']) if result.get('market_cap') else (float(result['market_cap']) * 100000000 if result.get('market_cap') else None),
+                'total_shares': int(result['total_shares']) if result.get('total_shares') else None,
+                'float_cap': float(result['float_cap']) if result.get('float_cap') else None,
+                'turnover_rate': float(result['turnover_rate']) if result.get('turnover_rate') else None,
+                'volume_ratio': float(result['volume_ratio']) if result.get('volume_ratio') else None,
+                'pe_ttm': float(result['pe_ttm']) if result.get('pe_ttm') else (float(result['pe']) if result.get('pe') else None),
+                'update_time': update_time if update_time else (result['snapshot_time'].strftime('%Y-%m-%d %H:%M:%S') if result.get('snapshot_time') else None),
+                'crawl_time': result.get('crawl_time') or (result['snapshot_time'].strftime('%Y-%m-%d %H:%M:%S') if result.get('snapshot_time') else None)
+            }
+            return jsonify({'success': True, 'message': '获取成功', 'data': data})
+        else:
+            return jsonify({'success': False, 'message': '未找到行情数据', 'data': None})
+    except Exception as e:
+        logger.error(f"获取股票行情数据失败: {e}")
+        return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
+
+@app.route('/api/stock/<code>/market_data/refresh', methods=['POST'])
+def refresh_stock_market_data(code):
+    """刷新股票行情数据（调用百度财经抓取器）"""
+    try:
+        # 导入百度财经抓取器
+        from fetchers.baidu_finance_fetcher import BaiduFinanceFetcher, StockMarketDataDB
+        
+        # 创建抓取器和数据库操作对象
+        fetcher = BaiduFinanceFetcher()
+        db = StockMarketDataDB(MYSQL_CONFIG)
+        
+        # 连接数据库并创建表（如果不存在）
+        db.connect()
+        db.create_table()
+        
+        # 抓取数据
+        logger.info(f"开始抓取股票 {code} 的行情数据...")
+        data = fetcher.fetch_stock_data(code)
+        
+        if data:
+            # 保存数据
+            db.save_data(data)
+            db.close()
+            
+            logger.info(f"股票 {code} 的行情数据刷新成功")
+            return jsonify({'success': True, 'message': '行情数据刷新成功', 'data': data})
+        else:
+            db.close()
+            logger.warning(f"未能抓取到股票 {code} 的行情数据")
+            return jsonify({'success': False, 'message': '未能抓取到行情数据', 'data': None})
+            
+    except Exception as e:
+        logger.error(f"刷新股票行情数据失败: {e}")
+        return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
+
+@app.route('/api/my_stock/refresh_market', methods=['POST'])
+def refresh_all_my_stock_market():
+    """刷新所有自选股的行情数据"""
+    try:
+        # 导入百度财经抓取器
+        from fetchers.baidu_finance_fetcher import BaiduFinanceFetcher, StockMarketDataDB
+        
+        # 获取自选股列表
+        db_client = MySQLClient(MYSQL_CONFIG)
+        sql = "SELECT code, name FROM my_stock"
+        stocks = db_client.query_all(sql)
+        db_client.close()
+        
+        if not stocks:
+            return jsonify({'success': False, 'message': '自选股列表为空', 'data': None})
+        
+        # 创建抓取器和数据库操作对象
+        fetcher = BaiduFinanceFetcher()
+        db = StockMarketDataDB(MYSQL_CONFIG)
+        db.connect()
+        db.create_table()
+        
+        success_count = 0
+        fail_count = 0
+        failed_stocks = []
+        
+        # 遍历自选股，逐个抓取行情数据
+        for stock in stocks:
+            code = stock['code']
+            name = stock['name']
+            try:
+                logger.info(f"开始抓取股票 {code} ({name}) 的行情数据...")
+                data = fetcher.fetch_stock_data(code)
+                
+                if data:
+                    db.save_data(data)
+                    success_count += 1
+                    logger.info(f"股票 {code} ({name}) 的行情数据抓取成功")
+                else:
+                    fail_count += 1
+                    failed_stocks.append(f"{code} ({name})")
+                    logger.warning(f"未能抓取到股票 {code} ({name}) 的行情数据")
+                    
+                # 添加延迟，避免请求过快
+                import time
+                time.sleep(0.5)
+                
+            except Exception as e:
+                fail_count += 1
+                failed_stocks.append(f"{code} ({name})")
+                logger.error(f"抓取股票 {code} ({name}) 的行情数据失败: {e}")
+        
+        db.close()
+        
+        message = f"行情数据刷新完成，成功 {success_count} 只，失败 {fail_count} 只"
+        if failed_stocks:
+            message += f"，失败股票: {', '.join(failed_stocks)}"
+        
+        logger.info(message)
+        return jsonify({
+            'success': True, 
+            'message': message, 
+            'data': {
+                'total': len(stocks),
+                'success': success_count,
+                'failed': fail_count,
+                'failed_stocks': failed_stocks
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"刷新自选股行情数据失败: {e}")
+        return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
 
 @app.route('/api/stock/<code>/f10/market', methods=['GET'])
 def get_f10_market(code):

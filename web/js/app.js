@@ -236,27 +236,27 @@ async function loadStockInfo(code) {
 }
 
 /**
- * 加载F10行情数据
+ * 加载股票行情数据（从百度财经抓取）
  */
 async function loadF10Market(code) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/stock/${code}/f10/market`);
+        const response = await fetch(`${API_BASE_URL}/api/stock/${code}/market_data`);
         const result = await response.json();
         
         if (result.success && result.data) {
-            const market = result.data;
+            const data = result.data;
             
             // 更新价格
             const priceElement = document.getElementById('currentPrice');
             const changeElement = document.getElementById('priceChange');
             const changePercentElement = document.getElementById('priceChangePercent');
+            const priceChangeInfo = document.getElementById('priceChangeInfo');
             
-            if (market.price) {
-                const price = parseFloat(market.price);
-                priceElement.textContent = price.toFixed(2);
+            if (data.current_price !== null && data.current_price !== undefined) {
+                priceElement.textContent = data.current_price.toFixed(2);
                 
-                const change = market.change ? parseFloat(market.change) : 0;
-                const changePercent = market.change_percent ? parseFloat(market.change_percent) : 0;
+                const change = data.price_change !== null && data.price_change !== undefined ? parseFloat(data.price_change) : 0;
+                const changePercent = data.change_percent !== null && data.change_percent !== undefined ? parseFloat(data.change_percent) : 0;
                 
                 if (change >= 0) {
                     changeElement.textContent = '+' + change.toFixed(2);
@@ -269,23 +269,173 @@ async function loadF10Market(code) {
                     changeElement.classList.add('negative');
                     changePercentElement.classList.add('negative');
                 }
-            }
-            
-            // 更新市值
-            const marketCapValue = parseFloat(market.market_cap);
-            document.getElementById('marketCap').textContent = !isNaN(marketCapValue) && marketCapValue > 0 ? marketCapValue.toFixed(2) + '亿' : '--';
-            
-            // 显示更新时间
-            const updateTimeElement = document.getElementById('updateTime');
-            if (market.snapshot_time) {
-                const updateTime = new Date(market.snapshot_time);
-                updateTimeElement.textContent = `(更新: ${updateTime.toLocaleString()})`;
             } else {
-                updateTimeElement.textContent = '';
+                priceChangeInfo.style.display = 'none';
             }
+            
+            // 更新交易所和板块信息
+            document.getElementById('exchangeTag').textContent = data.exchange || '--';
+            document.getElementById('plateTag').textContent = data.plate || '--';
+            document.getElementById('industryTag').textContent = data.industry || '--';
+            
+            // 更新行情数据
+            document.getElementById('openPrice').textContent = data.open_price !== null ? data.open_price.toFixed(2) : '--';
+            document.getElementById('prevClose').textContent = data.prev_close !== null ? data.prev_close.toFixed(2) : '--';
+            document.getElementById('highPrice').textContent = data.high_price !== null ? data.high_price.toFixed(2) : '--';
+            document.getElementById('lowPrice').textContent = data.low_price !== null ? data.low_price.toFixed(2) : '--';
+            
+            // 更新成交量和成交额（格式化）
+            document.getElementById('volume').textContent = formatVolume(data.volume);
+            document.getElementById('amount').textContent = formatAmount(data.amount);
+            document.getElementById('marketCap').textContent = formatAmount(data.market_cap);
+            document.getElementById('totalShares').textContent = formatAmount(data.total_shares);
+            document.getElementById('floatCap').textContent = formatAmount(data.float_cap);
+            
+            // 更新换手率、量比、市盈率
+            document.getElementById('turnoverRate').textContent = data.turnover_rate !== null ? data.turnover_rate.toFixed(2) + '%' : '--';
+            document.getElementById('volumeRatio').textContent = data.volume_ratio !== null ? data.volume_ratio.toFixed(2) : '--';
+            document.getElementById('peTtm').textContent = data.pe_ttm !== null ? data.pe_ttm.toFixed(2) : '--';
+            
+            // 更新时间
+            document.getElementById('updateTime').textContent = data.update_time || '--';
+        }
+        
+        // 检查自选股状态
+        await checkMyStockStatus(code);
+    } catch (error) {
+        console.error('加载股票行情数据失败:', error);
+    }
+}
+
+/**
+ * 格式化成交量
+ */
+function formatVolume(volume) {
+    if (volume === null || volume === undefined) return '--';
+    const v = parseFloat(volume);
+    if (isNaN(v)) return '--';
+    if (v >= 10000) {
+        return (v / 10000).toFixed(2) + '万手';
+    }
+    return v.toFixed(0) + '手';
+}
+
+/**
+ * 格式化金额（市值、成交额等）
+ */
+function formatAmount(amount) {
+    if (amount === null || amount === undefined) return '--';
+    const a = parseFloat(amount);
+    if (isNaN(a)) return '--';
+    if (a >= 100000000) {
+        return (a / 100000000).toFixed(2) + '亿';
+    } else if (a >= 10000) {
+        return (a / 10000).toFixed(2) + '万';
+    }
+    return a.toFixed(0);
+}
+
+/**
+ * 刷新行情数据
+ */
+async function refreshMarketData() {
+    const refreshBtn = document.getElementById('refreshMarketBtn');
+    const originalHtml = refreshBtn.innerHTML;
+    
+    // 设置刷新状态
+    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    refreshBtn.disabled = true;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/stock/${currentStockCode}/market_data/refresh`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 刷新成功，重新加载行情数据
+            await loadF10Market(currentStockCode);
+            showToast('行情数据刷新成功');
+        } else {
+            showToast('刷新失败: ' + result.message, 'error');
         }
     } catch (error) {
-        console.error('加载F10行情数据失败:', error);
+        console.error('刷新行情数据失败:', error);
+        showToast('刷新失败，请检查网络连接', 'error');
+    } finally {
+        // 恢复按钮状态
+        refreshBtn.innerHTML = originalHtml;
+        refreshBtn.disabled = false;
+    }
+}
+
+/**
+ * 切换自选股状态
+ */
+async function toggleMyStock() {
+    const toggleBtn = document.getElementById('toggleMyStockBtn');
+    const isFavorited = toggleBtn.classList.contains('favorited');
+    
+    try {
+        let response;
+        if (isFavorited) {
+            // 删除自选股
+            response = await fetch(`${API_BASE_URL}/api/my_stock/${currentStockCode}`, {
+                method: 'DELETE'
+            });
+        } else {
+            // 添加自选股
+            const stockName = document.getElementById('stockName').textContent;
+            response = await fetch(`${API_BASE_URL}/api/my_stock/${currentStockCode}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: stockName,
+                    pool_type: 'watch',
+                    notes: ''
+                })
+            });
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 切换按钮状态
+            toggleBtn.classList.toggle('favorited');
+            const actionText = isFavorited ? '已移出自选股' : '已添加到自选股';
+            showToast(actionText);
+        } else {
+            showToast('操作失败: ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('切换自选股状态失败:', error);
+        showToast('操作失败，请检查网络连接', 'error');
+    }
+}
+
+/**
+ * 检查股票是否在自选股中
+ */
+async function checkMyStockStatus(code) {
+    const toggleBtn = document.getElementById('toggleMyStockBtn');
+    if (!toggleBtn) return;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/my_stocks`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const exists = result.data.some(stock => stock.code === code);
+            toggleBtn.classList.toggle('favorited', exists);
+        }
+    } catch (error) {
+        console.error('检查自选股状态失败:', error);
     }
 }
 
@@ -691,6 +841,32 @@ function showLoading(show) {
     } else {
         overlay.classList.remove('active');
     }
+}
+
+/**
+ * 显示Toast提示
+ */
+function showToast(message, type = 'success') {
+    // 创建Toast元素
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    
+    // 添加到页面
+    document.body.appendChild(toast);
+    
+    // 显示动画
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // 3秒后自动消失
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
 }
 
 /**

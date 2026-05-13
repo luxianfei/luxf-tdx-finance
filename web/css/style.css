@@ -356,18 +356,18 @@ div.Pfosts.tosan,
 .stock-title-section {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex: 1;
+    gap: 12px;
+    min-width: 120px;
 }
 
 .stock-name {
-    font-size: 1.1rem;
-    font-weight: 600;
+    font-size: 1.4rem;
+    font-weight: 700;
     color: var(--text-primary);
 }
 
 .stock-code {
-    font-size: 0.85rem;
+    font-size: 1.1rem;
     color: var(--text-tertiary);
     font-family: 'SF Mono', monospace;
 }
@@ -375,29 +375,89 @@ div.Pfosts.tosan,
 /* 行情数据 */
 .stock-market-data {
     display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    position: relative;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+/* 操作按钮组 */
+.market-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+/* 市场头部信息 */
+.market-header {
+    display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.action-btn {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.action-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.action-btn:active {
+    transform: scale(0.95);
+}
+
+.action-btn.favorited {
+    color: #ffc107;
 }
 
 .price-section {
     display: flex;
     align-items: baseline;
-    gap: 6px;
+    gap: 8px;
 }
 
 .current-price {
-    font-size: 2rem;
+    font-size: 2.2rem;
     font-weight: 700;
     color: var(--text-primary);
 }
 
+.price-unit {
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.price-change-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .price-change {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 600;
 }
 
 .price-change-percent {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 600;
 }
 
@@ -409,6 +469,76 @@ div.Pfosts.tosan,
 .price-change.negative,
 .price-change-percent.negative {
     color: var(--danger-color);
+}
+
+.stock-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tag-item {
+    padding: 2px 8px;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-color);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.market-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 14px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+.market-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.market-label {
+    font-size: 0.725rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.market-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'SF Mono', monospace;
+}
+
+.market-value.high {
+    color: var(--success-color);
+}
+
+.market-value.low {
+    color: var(--danger-color);
+}
+
+.update-info {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.update-time-label {
+}
+
+.update-time-value {
+    font-family: 'SF Mono', monospace;
 }
 
 .market-stats {
@@ -868,21 +998,11 @@ div.Pfosts.tosan,
 }
 
 .qa-icon.question-icon {
-<<<<<<< HEAD
     background-color: var(--primary-color);
-=======
-    background-color: #3b82f6;
->>>>>>> 616180d27539f3aaf27d1ea7b7bf4561895305fc
-    color: white;
 }
 
 .qa-icon.answer-icon {
-<<<<<<< HEAD
     background-color: var(--success-color);
-=======
-    background-color: #ef4444;
->>>>>>> 616180d27539f3aaf27d1ea7b7bf4561895305fc
-    color: white;
 }
 
 /* 标签 */
@@ -932,31 +1052,17 @@ div.Pfosts.tosan,
     border-radius: 2px;
 }
 
-<<<<<<< HEAD
-/* 深色主题下的高亮样式 */
-[data-theme="dark"] .highlight {
-    background-color: #fbbf24;
-    color: #1a1a2e;
-}
 
-/* 金色主题下的高亮样式 */
-[data-theme="gold"] .highlight {
-    background-color: #ffd700;
-    color: #1a1510;
-}
-
-=======
->>>>>>> 616180d27539f3aaf27d1ea7b7bf4561895305fc
 /* 分页控件 */
 .qa-pagination {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
     padding-top: 16px;
     margin-top: 12px;
     border-top: 1px solid var(--border-light);
-    flex-wrap: wrap;
-    gap: 12px;
+    gap: 16px;
+    width: 100%;
 }
 
 .pagination-info {
@@ -1265,6 +1371,27 @@ div.Pfosts.tosan,
 
 .refresh-hudong-btn:hover {
     background-color: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+/* 刷新行情按钮 */
+.refresh-market-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: var(--success-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.refresh-market-btn:hover {
+    background-color: var(--success-dark);
     transform: translateY(-1px);
 }
 
