@@ -19,6 +19,7 @@
             --card-gradient-4: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
             --card-gradient-5: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
             --card-gradient-6: linear-gradient(135deg, #434343 0%, #000000 100%);
+            --card-gradient-7: linear-gradient(135deg, #d4a574 0%, #c9a227 50%, #b8860b 100%);
         }
 
         /* Hero区域 */
@@ -272,6 +273,7 @@
         .feature-card.card-4::before { background: var(--card-gradient-4); }
         .feature-card.card-5::before { background: var(--card-gradient-5); }
         .feature-card.card-6::before { background: var(--card-gradient-6); }
+        .feature-card.card-7::before { background: var(--card-gradient-7); }
 
         .feature-card:hover::before {
             transform: scaleX(1);
@@ -307,6 +309,7 @@
         .feature-icon.icon-4 { background: var(--card-gradient-4); }
         .feature-icon.icon-5 { background: var(--card-gradient-5); }
         .feature-icon.icon-6 { background: var(--card-gradient-6); }
+        .feature-icon.icon-7 { background: var(--card-gradient-7); }
 
         .feature-card h3 {
             font-size: 1rem;
@@ -688,6 +691,18 @@
                     <p>毛利率、营收同比、净利润等关键财务指标的多季度对比分析</p>
                     <span class="arrow">
                         <span>查看分析</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
+                </div>
+
+                <div class="feature-card card-7" onclick="navigateTo('ps_filter.html')">
+                    <div class="feature-icon icon-7">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h3>PS科技股筛选</h3>
+                    <p>基于PS市销率和机构盈利预测，筛选高成长科技股</p>
+                    <span class="arrow">
+                        <span>开始筛选</span>
                         <i class="fas fa-arrow-right"></i>
                     </span>
                 </div>

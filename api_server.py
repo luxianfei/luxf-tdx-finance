@@ -41,16 +41,41 @@ update_status = {
 }
 
 def _get_industry_name(industry_code):
-    """从数据库查询行业代码对应的中文名称"""
+    """从数据库查询行业代码对应的中文名称（支持一级和二级行业）"""
     if not industry_code:
         return ''
     
     try:
         db_client = MySQLClient(MYSQL_CONFIG)
-        sql = "SELECT name FROM industry_map WHERE code = %s LIMIT 1"
-        result = db_client.query_one(sql, (industry_code,))
-        db_client.close()
-        return result.get('name', industry_code) if result else industry_code
+        
+        # 如果是二级行业代码（7位），获取一级+二级行业名称
+        if len(industry_code) >= 7 and industry_code.startswith('SW'):
+            level1_code = industry_code[:5]
+            level2_code = industry_code[:7]
+            
+            # 获取一级行业名称
+            sql1 = "SELECT name FROM industry_map WHERE code = %s LIMIT 1"
+            result1 = db_client.query_one(sql1, (level1_code,))
+            level1_name = result1.get('name', level1_code) if result1 else level1_code
+            
+            # 获取二级行业名称
+            sql2 = "SELECT name FROM industry_map WHERE code = %s LIMIT 1"
+            result2 = db_client.query_one(sql2, (level2_code,))
+            level2_name = result2.get('name', '') if result2 else ''
+            
+            db_client.close()
+            
+            if level2_name:
+                return f"{level1_name}-{level2_name}"
+            else:
+                return level1_name
+        else:
+            # 旧格式，直接查询
+            sql = "SELECT name FROM industry_map WHERE code = %s LIMIT 1"
+            result = db_client.query_one(sql, (industry_code,))
+            db_client.close()
+            return result.get('name', industry_code) if result else industry_code
+            
     except Exception as e:
         logger.error(f"查询行业名称失败: {e}")
         return industry_code
@@ -603,8 +628,8 @@ def get_stock_market_data(code):
                 # 格式: 20260513161451 -> 2026-05-13 16:14:51
                 update_time = f"{update_time[0:4]}-{update_time[4:6]}-{update_time[6:8]} {update_time[8:10]}:{update_time[10:12]}:{update_time[12:14]}"
             
-            # 获取行业信息并转换为中文
-            industry_code = result.get('industry') or (stock_info.get('industry') if stock_info else '')
+            # 获取行业信息并转换为中文（优先使用stock_list中的申万行业代码）
+            industry_code = (stock_info.get('industry') if stock_info else '') or result.get('industry') or ''
             industry_name = _get_industry_name(industry_code.strip())
             
             data = {
@@ -1568,6 +1593,285 @@ def fetch_stock_qa(code):
         })
     except Exception as e:
         logger.error(f"采集互动问答数据失败: {e}")
+        return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
+
+# ============================================================
+# PS市销率科技股筛选API接口
+# ============================================================
+
+@app.route('/api/stocks/filter/ps_tech', methods=['GET'])
+def filter_ps_tech_stocks():
+    """
+    PS市销率科技股筛选接口
+    根据PS倍数范围和营收增速筛选科技类成长股
+    
+    参数:
+    - ps_min: PS倍数最小值
+    - ps_max: PS倍数最大值
+    - revenue_growth_min: 营收增速最小值(%)
+    - revenue_growth_max: 营收增速最大值(%)
+    - max_count: 最大返回数量(默认100)
+    - page: 页码(默认1)
+    - limit: 每页数量(默认50)
+    - sort_field: 排序字段(code, ps_ratio, revenue_growth, market_cap)
+    - sort_order: 排序方向(asc, desc)
+    """
+    try:
+        db_client = MySQLClient(MYSQL_CONFIG)
+        
+        # 获取分页参数
+        page = request.args.get('page', 1, type=int)
+        limit = request.args.get('limit', 50, type=int)
+        offset = (page - 1) * limit
+        
+        # 获取筛选参数
+        ps_min = request.args.get('ps_min', type=float)
+        ps_max = request.args.get('ps_max', type=float)
+        revenue_growth_min = request.args.get('revenue_growth_min', type=float)
+        revenue_growth_max = request.args.get('revenue_growth_max', type=float)
+        max_count = request.args.get('max_count', 100, type=int)
+        
+        # 获取排序参数
+        sort_field = request.args.get('sort_field', 'ps_ratio')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # 主查询：获取股票的基本信息、行情数据和财务数据
+        sql = f"""
+            SELECT 
+                sl.code, 
+                sl.name, 
+                sl.industry,
+                -- 行情数据
+                smd.current_price,
+                smd.market_cap,
+                smd.pe_ttm,
+                -- 最新季度财务数据
+                qf.revenue_quarterly_w,
+                qf.revenue_yoy,
+                -- 计算PS比率（市值/营收，需要处理单位转换）
+                -- market_cap单位是元，revenue_quarterly_w单位是亿元
+                CASE 
+                    WHEN qf.revenue_quarterly_w IS NULL OR qf.revenue_quarterly_w = 0 THEN NULL
+                    ELSE (smd.market_cap / 100000000) / qf.revenue_quarterly_w * 4  -- 市值转亿 / 季度营收 * 4 = 年化PS
+                END AS ps_ratio,
+                -- 获取报告日期用于后续关联
+                qf.report_date
+            FROM stock_list sl
+            INNER JOIN tech_sector_stocks tss ON sl.code = tss.code
+            LEFT JOIN stock_market_data smd ON sl.code = smd.code
+            LEFT JOIN (
+                SELECT code, revenue_quarterly_w, revenue_yoy, report_date
+                FROM quarterly_finance
+                WHERE report_date = (
+                    SELECT MAX(report_date) FROM quarterly_finance q2 WHERE q2.code = quarterly_finance.code
+                )
+            ) qf ON sl.code = qf.code
+            WHERE sl.status = 'active'
+                AND smd.market_cap IS NOT NULL
+                AND smd.market_cap > 0
+                AND qf.revenue_quarterly_w IS NOT NULL
+                AND qf.revenue_quarterly_w > 0
+        """
+        
+        count_sql = sql.replace("SELECT \n                sl.code, \n                sl.name, \n                sl.industry,\n                -- 行情数据\n                smd.current_price,\n                smd.market_cap,\n                smd.pe_ttm,\n                -- 最新季度财务数据\n                qf.revenue_quarterly_w,\n                qf.revenue_yoy,\n                -- 计算PS比率（市值/营收，需要处理单位转换）\n                -- market_cap单位是元，revenue_quarterly_w单位是亿元\n                CASE \n                    WHEN qf.revenue_quarterly_w IS NULL OR qf.revenue_quarterly_w = 0 THEN NULL\n                    ELSE (smd.market_cap / 100000000) / qf.revenue_quarterly_w * 4  -- 市值转亿 / 季度营收 * 4 = 年化PS\n                END AS ps_ratio,\n                -- 获取报告日期用于后续关联\n                qf.report_date", "SELECT COUNT(*) as total")
+        
+        count_params = []
+        
+        # 添加PS倍数筛选到count查询
+        if ps_min is not None:
+            count_sql += " AND ((smd.market_cap / 100000000) / qf.revenue_quarterly_w * 4) >= %s"
+            count_params.append(ps_min)
+        if ps_max is not None:
+            count_sql += " AND ((smd.market_cap / 100000000) / qf.revenue_quarterly_w * 4) <= %s"
+            count_params.append(ps_max)
+        
+        # 添加营收增速筛选到count查询
+        if revenue_growth_min is not None:
+            count_sql += " AND qf.revenue_yoy >= %s"
+            count_params.append(revenue_growth_min)
+        if revenue_growth_max is not None:
+            count_sql += " AND qf.revenue_yoy <= %s"
+            count_params.append(revenue_growth_max)
+        
+        # 获取总记录数
+        count_result = db_client.query_one(count_sql, count_params)
+        total = count_result['total'] if count_result else 0
+        
+        params = []
+        
+        # 添加PS倍数筛选
+        if ps_min is not None:
+            sql += " AND ((smd.market_cap / 100000000) / qf.revenue_quarterly_w * 4) >= %s"
+            params.append(ps_min)
+        if ps_max is not None:
+            sql += " AND ((smd.market_cap / 100000000) / qf.revenue_quarterly_w * 4) <= %s"
+            params.append(ps_max)
+        
+        # 添加营收增速筛选
+        if revenue_growth_min is not None:
+            sql += " AND qf.revenue_yoy >= %s"
+            params.append(revenue_growth_min)
+        if revenue_growth_max is not None:
+            sql += " AND qf.revenue_yoy <= %s"
+            params.append(revenue_growth_max)
+        
+        # 添加排序
+        valid_sort_fields = ['code', 'ps_ratio', 'revenue_growth', 'market_cap', 'current_price']
+        if sort_field not in valid_sort_fields:
+            sort_field = 'ps_ratio'
+        
+        sql += f" ORDER BY {sort_field} {'ASC' if sort_order == 'asc' else 'DESC'}"
+        
+        # 添加分页和数量限制
+        sql += " LIMIT %s OFFSET %s"
+        params.extend([min(limit, max_count), offset])
+        
+        logger.info(f"PS筛选SQL: {sql}")
+        logger.info(f"PS筛选参数: {params}")
+        
+        results = db_client.query_all(sql, params)
+        logger.info(f"PS筛选结果数: {len(results) if results else 0}")
+        
+        # 获取盈利预测数据
+        stock_codes = [row['code'] for row in results if row['code']]
+        forecast_map = {}
+        if stock_codes:
+            placeholders = ",".join(["%s"] * len(stock_codes))
+            forecast_sql = f"""
+                SELECT code, year, revenue 
+                FROM profit_forecast 
+                WHERE code IN ({placeholders}) AND forecast_type = 'forecast'
+                ORDER BY code, year ASC
+            """
+            forecasts = db_client.query_all(forecast_sql, tuple(stock_codes))
+            for f in forecasts:
+                if f['code'] not in forecast_map:
+                    forecast_map[f['code']] = []
+                forecast_map[f['code']].append({
+                    'year': f['year'],
+                    'revenue': float(f['revenue']) / 100 if f['revenue'] else None  # 转换为亿元
+                })
+        
+        # 获取历史营收数据（近3年）
+        history_revenue_map = {}
+        if stock_codes:
+            history_sql = f"""
+                SELECT code, year, SUM(revenue_quarterly_w) as total_revenue
+                FROM quarterly_finance 
+                WHERE code IN ({placeholders})
+                GROUP BY code, year
+                ORDER BY code, year DESC
+            """
+            history_results = db_client.query_all(history_sql, tuple(stock_codes))
+            for h in history_results:
+                if h['code'] not in history_revenue_map:
+                    history_revenue_map[h['code']] = []
+                # revenue_quarterly_w单位是亿元，直接使用
+                history_revenue_map[h['code']].append({
+                    'year': h['year'],
+                    'revenue': float(h['total_revenue']) if h['total_revenue'] else None  # 单位：亿元
+                })
+        
+        # 获取行业映射数据（申万行业代码）
+        industry_map = {}
+        industry_sql = "SELECT code, name FROM industry_map"
+        industry_results = db_client.query_all(industry_sql)
+        for ind in industry_results:
+            industry_map[ind['code']] = ind['name']
+        
+        # 获取研报数（从profit_forecast表统计）
+        report_count_map = {}
+        if stock_codes:
+            report_sql = f"""
+                SELECT code, COUNT(DISTINCT year) as report_count
+                FROM profit_forecast 
+                WHERE code IN ({placeholders})
+                GROUP BY code
+            """
+            report_counts = db_client.query_all(report_sql, tuple(stock_codes))
+            for rc in report_counts:
+                report_count_map[rc['code']] = rc['report_count']
+        
+        db_client.close()
+        
+        # 处理结果
+        items = []
+        for row in results:
+            code = row['code']
+            
+            # 获取历史营收（最近3年）
+            history_revenue = history_revenue_map.get(code, [])[:3]
+            history_revenue_str = "; ".join([f"{h['year']}: {h['revenue']:.2f}亿" for h in history_revenue if h['revenue'] is not None])
+            
+            # 获取预测营收（未来3年）
+            forecast_revenue = forecast_map.get(code, [])[:3]
+            forecast_revenue_str = "; ".join([f"{f['year']}: {f['revenue']:.2f}亿" for f in forecast_revenue if f['revenue'] is not None])
+            
+            # 计算预测PS倍数（基于预测营收）
+            ps_forecasts = []
+            market_cap = float(row['market_cap']) / 100000000 if row['market_cap'] else 0  # 转换为亿元
+            for f in forecast_revenue:
+                if f['revenue'] and f['revenue'] > 0 and market_cap > 0:
+                    ps_val = market_cap / f['revenue']
+                    ps_forecasts.append(f"{f['year']}: {ps_val:.2f}x")
+            
+            # 获取中文行业名称（支持一级+二级行业）
+            industry_code = str(row['industry']).strip() if row['industry'] else ''
+            if industry_code and len(industry_code) >= 7 and industry_code.startswith('SW'):
+                level1_code = industry_code[:5]
+                level2_code = industry_code[:7]
+                level1_name = industry_map.get(level1_code, level1_code)
+                level2_name = industry_map.get(level2_code, '')
+                industry_name = f"{level1_name}-{level2_name}" if level2_name else level1_name
+            else:
+                industry_name = industry_map.get(industry_code, row['industry'] if row['industry'] else '未知')
+            
+            items.append({
+                'code': code,
+                'name': row['name'],
+                'industry': industry_name,
+                'current_price': float(row['current_price']) if row['current_price'] else None,
+                'market_cap': float(row['market_cap']) if row['market_cap'] else None,
+                'pe': float(row['pe_ttm']) if row['pe_ttm'] else None,
+                'revenue_growth': round(float(row['revenue_yoy']), 2) if row['revenue_yoy'] else None,
+                'ps_ratio': round(float(row['ps_ratio']), 2) if row['ps_ratio'] else None,
+                'history_revenue': history_revenue_str,
+                'forecast_revenue': forecast_revenue_str,
+                'ps_forecast': "; ".join(ps_forecasts),
+                'report_count': report_count_map.get(code, 0),
+                'best_ps': min([float(p.split(':')[1].strip().replace('x', '')) for p in ps_forecasts]) if ps_forecasts else None
+            })
+        
+        # 计算总页数
+        total_pages = (total + limit - 1) // limit if total > 0 else 1
+        
+        # 计算统计信息
+        avg_ps = sum(item['ps_ratio'] for item in items if item['ps_ratio']) / len([item for item in items if item['ps_ratio']]) if items else 0
+        avg_growth = sum(item['revenue_growth'] for item in items if item['revenue_growth']) / len([item for item in items if item['revenue_growth']]) if items else 0
+        avg_report_count = sum(item['report_count'] for item in items) / len(items) if items else 0
+        
+        return jsonify({
+            'success': True,
+            'message': '获取成功',
+            'data': {
+                'items': items,
+                'statistics': {
+                    'total_count': total,
+                    'avg_ps': round(avg_ps, 2),
+                    'avg_revenue_growth': round(avg_growth, 2),
+                    'avg_report_count': round(avg_report_count, 1)
+                },
+                'pagination': {
+                    'current_page': page,
+                    'total_pages': total_pages,
+                    'total_items': total,
+                    'limit': limit
+                }
+            }
+        })
+    except Exception as e:
+        logger.error(f"筛选PS科技股失败: {e}")
         return jsonify({'success': False, 'message': str(e), 'data': None}), 500
 
 

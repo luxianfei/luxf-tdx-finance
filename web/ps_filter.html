@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="gold">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10倍PS高科技成长股 - 股票财务数据分析</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --gold-primary: #d4a574;
+            --gold-secondary: #c9a227;
+            --gold-dark: #b8860b;
+            --gold-bg: #1a1a1a;
+            --gold-card: #2a2a2a;
+            --gold-border: #4a3728;
+        }
+        
+        [data-theme="gold"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2a2a2a;
+            --bg-card: #2a2a2a;
+            --text-primary: #d4a574;
+            --text-secondary: #b8a67e;
+            --border-color: #4a3728;
+            --shadow-sm: 0 2px 8px rgba(212, 165, 116, 0.1);
+            --shadow-md: 0 4px 16px rgba(212, 165, 116, 0.15);
+        }
+
+        .hero-section {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+            border-bottom: 2px solid #d4a574;
+        }
+
+        .hero-title {
+            color: #d4a574;
+            font-size: 1.75rem;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(212, 165, 116, 0.3);
+        }
+
+        .hero-subtitle {
+            color: #b8a67e;
+            font-size: 0.9rem;
+        }
+
+        /* 筛选区域样式 */
+        .filter-container {
+            background: linear-gradient(135deg, #2a2a2a 0%, #353535 100%);
+            border: 1px solid #4a3728;
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+        }
+
+        .filter-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #4a3728;
+        }
+
+        .filter-header i {
+            color: #d4a574;
+            font-size: 1rem;
+        }
+
+        .filter-header h3 {
+            color: #d4a574;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .filter-group label {
+            color: #b8a67e;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .filter-group .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-group input {
+            width: 75px;
+            padding: 7px 10px;
+            background: #1a1a1a;
+            border: 1px solid #4a3728;
+            border-radius: 6px;
+            color: #d4a574;
+            font-size: 0.8rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .filter-group input:focus {
+            outline: none;
+            border-color: #d4a574;
+            box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.1);
+        }
+
+        .filter-group select {
+            padding: 7px 10px;
+            background: #1a1a1a;
+            border: 1px solid #4a3728;
+            border-radius: 6px;
+            color: #d4a574;
+            font-size: 0.8rem;
+            min-width: 100px;
+            transition: border-color 0.3s ease;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: #d4a574;
+        }
+
+        .filter-group .range-separator {
+            color: #d4a574;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .filter-group .unit {
+            color: #b8a67e;
+            font-size: 0.75rem;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .filter-btn {
+            padding: 7px 16px;
+            background: linear-gradient(135deg, #d4a574 0%, #c9a227 100%);
+            border: none;
+            border-radius: 6px;
+            color: #1a1a1a;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .filter-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+        }
+
+        .reset-btn {
+            padding: 7px 16px;
+            background: #353535;
+            border: 1px solid #4a3728;
+            border-radius: 6px;
+            color: #d4a574;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .reset-btn:hover {
+            background: #4a4a4a;
+            border-color: #d4a574;
+        }
+
+        /* 统计卡片样式 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #2a2a2a 0%, #353535 100%);
+            border: 1px solid #4a3728;
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(212, 165, 116, 0.1);
+        }
+
+        .stats-card .stat-icon {
+            font-size: 1.1rem;
+            color: #d4a574;
+            margin-bottom: 8px;
+        }
+
+        .stats-card .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #d4a574;
+            line-height: 1.1;
+        }
+
+        .stats-card .stat-label {
+            font-size: 0.72rem;
+            color: #b8a67e;
+            margin-top: 6px;
+        }
+
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            border-radius: 12px;
+            border: 1px solid #4a3728;
+        }
+
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .table-container::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 0 12px 12px 0;
+        }
+
+        .table-container::-webkit-scrollbar-thumb {
+            background: #4a3728;
+            border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #d4a574;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #2a2a2a;
+        }
+
+        .data-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .data-table th {
+            background: linear-gradient(135deg, #3d3d3d 0%, #4a4a4a 100%);
+            color: #d4a574;
+            padding: 12px 14px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.8rem;
+            border-bottom: 2px solid #4a3728;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .data-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #3d3d3d;
+            color: #e0d5c0;
+            font-size: 0.85rem;
+        }
+
+        .data-table tr:hover td {
+            background: #353535;
+        }
+
+        .data-table .positive {
+            color: #4ade80;
+        }
+
+        .data-table .negative {
+            color: #f87171;
+        }
+
+        .data-table .code-link {
+            color: #d4a574;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .data-table .code-link:hover {
+            text-decoration: underline;
+        }
+
+        .data-table .ps-highlight {
+            background: rgba(212, 165, 116, 0.15);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .data-table .ps-highlight.high {
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.15);
+        }
+
+        .data-table .ps-highlight.medium {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.15);
+        }
+
+        .data-table .ps-highlight.low {
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.15);
+        }
+
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .pagination-btn {
+            padding: 10px 16px;
+            background: #353535;
+            border: 1px solid #4a3728;
+            border-radius: 8px;
+            color: #d4a574;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: #d4a574;
+            color: #1a1a1a;
+            border-color: #d4a574;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-number {
+            padding: 10px 16px;
+            background: #353535;
+            border: 1px solid #4a3728;
+            border-radius: 8px;
+            color: #d4a574;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pagination-number:hover {
+            background: #4a4a4a;
+            border-color: #d4a574;
+        }
+
+        .pagination-number.active {
+            background: #d4a574;
+            color: #1a1a1a;
+            border-color: #d4a574;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: #b8a67e;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #d4a574;
+        }
+
+        .action-btn {
+            padding: 8px 14px;
+            background: #353535;
+            border: 1px solid #4a3728;
+            border-radius: 6px;
+            color: #d4a574;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: #d4a574;
+            color: #1a1a1a;
+            border-color: #d4a574;
+        }
+
+        .action-btn.in-stock {
+            background: #d4a574;
+            color: #1a1a1a;
+        }
+
+        .ps-forecast-container {
+            font-size: 0.8rem;
+            color: #b8a67e;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-actions {
+                margin-left: 0;
+                justify-content: flex-end;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-left">
+            <a href="/" class="logo">
+                <i class="fas fa-chart-line"></i>
+                <span>Luxf股票深度投研分析平台</span>
+            </a>
+        </div>
+        <div class="header-center">
+            <div class="search-box">
+                <input type="text" id="stockSearch" placeholder="输入股票代码/名称">
+                <button onclick="searchStock()">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="/my_stocks.html" class="nav-btn" title="自选股管理">
+                <i class="fas fa-star"></i>
+            </a>
+            <a href="/stock_filter.html" class="nav-btn" title="财务筛选">
+                <i class="fas fa-filter"></i>
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <i class="fas fa-crown" id="themeIcon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Hero区域 -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title"><i class="fas fa-rocket"></i> 10倍PS高科技成长股</h1>
+            <p class="hero-subtitle">基于机构预测EPS + 历史营收趋势，筛选未来3年PS在合理区间的高科技成长股</p>
+        </div>
+    </section>
+
+    <!-- 筛选区域 -->
+    <main class="main-content" style="padding-top: 20px;">
+        <!-- 筛选条件 -->
+        <div class="filter-container">
+            <div class="filter-header">
+                <i class="fas fa-sliders-h"></i>
+                <h3>筛选条件</h3>
+            </div>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>PS范围（倍）</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="psMin" placeholder="最小" value="8" step="0.5">
+                        <span class="range-separator">-</span>
+                        <input type="number" id="psMax" placeholder="最大" value="15" step="0.5">
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label>最大数量</label>
+                    <input type="number" id="maxCount" placeholder="数量" value="100" step="10">
+                </div>
+
+                <div class="filter-group">
+                    <label>营收增速</label>
+                    <select id="revenueGrowth">
+                        <option value="">不限</option>
+                        <option value="0">大于0%</option>
+                        <option value="20">大于20%</option>
+                        <option value="30">大于30%</option>
+                        <option value="50">大于50%</option>
+                        <option value="100">大于100%</option>
+                    </select>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="filter-btn" onclick="applyFilters()">
+                        <i class="fas fa-search"></i> 开始筛选
+                    </button>
+                    <button class="reset-btn" onclick="resetFilters()">
+                        <i class="fas fa-sync-alt"></i> 重置
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+            <div class="stats-card">
+                <div class="stat-icon"><i class="fas fa-chart-bar"></i></div>
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">符合条件的科技股</div>
+            </div>
+            <div class="stats-card">
+                <div class="stat-icon"><i class="fas fa-percentage"></i></div>
+                <div class="stat-value" id="avgPs">0.0</div>
+                <div class="stat-label">平均PS倍数</div>
+            </div>
+            <div class="stats-card">
+                <div class="stat-icon"><i class="fas fa-trending-up"></i></div>
+                <div class="stat-value" id="avgGrowth">0.0%</div>
+                <div class="stat-label">平均营收增速</div>
+            </div>
+            <div class="stats-card">
+                <div class="stat-icon"><i class="fas fa-file-text"></i></div>
+                <div class="stat-value" id="avgReports">0</div>
+                <div class="stat-label">平均研报数</div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <section class="stock-info-card" style="margin-top: 0;">
+            <div class="table-container" style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th onclick="sortTable('code')">股票代码 <i class="fas fa-sort"></i></th>
+                            <th>股票名称</th>
+                            <th>行业板块</th>
+                            <th onclick="sortTable('current_price')">股价 <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('market_cap')">总市值(亿) <i class="fas fa-sort"></i></th>
+                            <th>市盈率(PE)</th>
+                            <th onclick="sortTable('revenue_growth')">营收增速 <i class="fas fa-sort"></i></th>
+                            <th>历史营收(亿)</th>
+                            <th>预测营收(亿)</th>
+                            <th>PS预测区间</th>
+                            <th onclick="sortTable('ps_ratio')">当前PS <i class="fas fa-sort"></i></th>
+                            <th>研报数</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="14" class="loading">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="pagination" id="pagination">
+                <button class="pagination-btn" id="prevPage" onclick="prevPage()" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span id="pageNumbers"></span>
+                <button class="pagination-btn" id="nextPage" onclick="nextPage()" disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const API_BASE_URL = '';
+        let currentPage = 1;
+        let currentFilters = {};
+        let sortField = '';
+        let sortOrder = 'asc';
+        let myStockSet = new Set();
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMyStocks();
+            loadData();
+        });
+
+        // 加载自选股
+        async function loadMyStocks() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stocks`);
+                const result = await response.json();
+                if (result.success && result.data) {
+                    myStockSet = new Set(result.data.map(item => item.code));
+                }
+            } catch (error) {
+                console.error('加载自选股失败:', error);
+            }
+        }
+
+        // 应用筛选条件
+        function applyFilters() {
+            const psMin = document.getElementById('psMin').value;
+            const psMax = document.getElementById('psMax').value;
+            const maxCount = document.getElementById('maxCount').value;
+            const revenueGrowth = document.getElementById('revenueGrowth').value;
+
+            currentFilters = {
+                ps_min: psMin,
+                ps_max: psMax,
+                max_count: maxCount,
+                revenue_growth_min: revenueGrowth
+            };
+            currentPage = 1;
+            loadData();
+        }
+
+        // 重置筛选条件
+        function resetFilters() {
+            document.getElementById('psMin').value = '8';
+            document.getElementById('psMax').value = '15';
+            document.getElementById('revenueGrowth').value = '';
+            document.getElementById('maxCount').value = '100';
+            currentFilters = {};
+            currentPage = 1;
+            sortField = '';
+            sortOrder = 'asc';
+            loadData();
+        }
+
+        // 排序
+        function sortTable(field) {
+            if (sortField === field) {
+                sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortField = field;
+                sortOrder = 'asc';
+            }
+            currentPage = 1;
+            loadData();
+        }
+
+        // 加载数据
+        async function loadData() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '<tr><td colspan="14" class="loading">加载中...</td></tr>';
+
+            try {
+                let url = `${API_BASE_URL}/api/stocks/filter/ps_tech?page=${currentPage}&limit=50`;
+
+                // 添加筛选条件
+                for (const [key, value] of Object.entries(currentFilters)) {
+                    if (value !== null && value !== '') {
+                        url += `&${key}=${value}`;
+                    }
+                }
+
+                // 添加排序
+                if (sortField) {
+                    url += `&sort_field=${sortField}&sort_order=${sortOrder}`;
+                }
+
+                const response = await fetch(url);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const items = (result.data.items || []).map(item => ({
+                        ...item,
+                        inMyStock: myStockSet.has(item.code)
+                    }));
+                    renderTable(items);
+                    updateStatistics(result.data.statistics || {});
+                    updatePagination(result.data.pagination || {current_page: 1, total_pages: 1, total_items: 0});
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="14" class="empty-state">暂无数据</td></tr>';
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                tableBody.innerHTML = '<tr><td colspan="14" class="empty-state">加载失败: ' + error.message + '</td></tr>';
+            }
+        }
+
+        // 渲染表格
+        function renderTable(items) {
+            const tableBody = document.getElementById('tableBody');
+
+            if (!items || items.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="14" class="empty-state">暂无数据</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = items.map((item, index) => {
+                const psClass = getPsClass(item.ps_ratio);
+                
+                return `
+                    <tr>
+                        <td>${(currentPage - 1) * 50 + index + 1}</td>
+                        <td><a href="stock_detail.html?code=${item.code}" class="code-link">${item.code}</a></td>
+                        <td>${item.name || '--'}</td>
+                        <td><span style="background: #3d3d3d; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem;">${item.industry || '--'}</span></td>
+                        <td>¥${formatNumber(item.current_price)}</td>
+                        <td>${formatNumber(item.market_cap)}</td>
+                        <td>${formatNumber(item.pe)}</td>
+                        <td class="${getNumberClass(item.revenue_growth)}">${formatNumber(item.revenue_growth)}%</td>
+                        <td style="max-width: 120px;">${item.history_revenue || '--'}</td>
+                        <td style="max-width: 150px;">${item.forecast_revenue || '--'}</td>
+                        <td>
+                            <div class="ps-forecast-container">${item.ps_forecast || '--'}</div>
+                        </td>
+                        <td><span class="ps-highlight ${psClass}">${formatNumber(item.ps_ratio)}</span></td>
+                        <td>${item.report_count || 0}</td>
+                        <td>
+                            <button class="action-btn ${item.inMyStock ? 'in-stock' : ''}" onclick="toggleMyStock('${item.code}', this)">
+                                ${item.inMyStock ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 获取PS样式类
+        function getPsClass(ps) {
+            if (!ps || ps < 8) return 'low';
+            if (ps >= 8 && ps <= 15) return 'medium';
+            return 'high';
+        }
+
+        // 获取数字样式类
+        function getNumberClass(value) {
+            if (!value) return '';
+            return parseFloat(value) >= 0 ? 'positive' : 'negative';
+        }
+
+        // 格式化数字
+        function formatNumber(num) {
+            if (num === null || num === undefined || num === '') return '--';
+            if (typeof num === 'number') {
+                if (Math.abs(num) >= 100000000) {
+                    return (num / 100000000).toFixed(2);
+                }
+                if (Math.abs(num) >= 10000) {
+                    return (num / 10000).toFixed(2);
+                }
+                return num.toFixed(2);
+            }
+            return num;
+        }
+
+        // 更新统计信息
+        function updateStatistics(stats) {
+            document.getElementById('totalCount').textContent = stats.total_count || 0;
+            document.getElementById('avgPs').textContent = (stats.avg_ps || 0).toFixed(1);
+            document.getElementById('avgGrowth').textContent = (stats.avg_revenue_growth || 0).toFixed(1) + '%';
+            document.getElementById('avgReports').textContent = (stats.avg_report_count || 0).toFixed(1);
+        }
+
+        // 更新分页
+        function updatePagination(pagination) {
+            currentPage = pagination.current_page || 1;
+            const totalPages = pagination.total_pages || 1;
+
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+
+            const pageNumbers = document.getElementById('pageNumbers');
+            let pagesHtml = '';
+            
+            const maxVisible = 5;
+            let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let end = Math.min(totalPages, start + maxVisible - 1);
+            start = Math.max(1, end - maxVisible + 1);
+
+            for (let i = start; i <= end; i++) {
+                pagesHtml += `<button class="pagination-number ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+
+            pageNumbers.innerHTML = pagesHtml;
+        }
+
+        // 上一页
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadData();
+            }
+        }
+
+        // 下一页
+        function nextPage() {
+            const totalPages = parseInt(document.querySelector('.pagination-number:last-child')?.textContent) || 1;
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadData();
+            }
+        }
+
+        // 跳转到指定页
+        function goToPage(page) {
+            currentPage = page;
+            loadData();
+        }
+
+        // 切换自选股
+        async function toggleMyStock(code, btn) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stocks/toggle/${code}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    if (btn.classList.contains('in-stock')) {
+                        btn.classList.remove('in-stock');
+                        btn.innerHTML = '<i class="far fa-star"></i>';
+                        myStockSet.delete(code);
+                    } else {
+                        btn.classList.add('in-stock');
+                        btn.innerHTML = '<i class="fas fa-star"></i>';
+                        myStockSet.add(code);
+                    }
+                }
+            } catch (error) {
+                console.error('操作失败:', error);
+            }
+        }
+
+        // 搜索股票
+        function searchStock() {
+            const keyword = document.getElementById('stockSearch').value.trim();
+            if (keyword) {
+                window.location.href = `stock_detail.html?code=${keyword}`;
+            }
+        }
+
+        // 切换主题
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'gold' ? 'dark' : 'gold';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            document.getElementById('themeIcon').className = newTheme === 'gold' ? 'fas fa-crown' : 'fas fa-moon';
+            localStorage.setItem('theme', newTheme);
+        }
+    </script>
+</body>
+</html>
