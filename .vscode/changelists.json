@@ -3,27 +3,8 @@
     {
       "name": "Default",
       "files": [
-        "api_server.py",
-        ".vscode/changelists.json",
-        "web/index.html",
-        "web/ps_filter.html",
-        "test_ps_query.py",
-        "test_code_format.py",
-        "test_ps_api.py",
-        "test_ps_range.py",
-        "test_subquery.py",
-        "test_ps_debug.py",
-        "models/tech_sector.py",
-        "scripts/update_tech_stocks.py",
-        "models/__pycache__/tech_sector.cpython-313.pyc",
-        "scripts/import_tdx_industry.py",
-        "analyze_industry_data.py",
-        "check_company_profile.py",
-        "check_industry_fields.py",
-        "list_tables.py",
-        "scripts/unify_industry_codes.py",
-        "scripts/import_shenwan_level2.py",
-        "scripts/import_tdx_plate.py"
+        "README.md",
+        ".vscode/changelists.json"
       ]
     }
   ],
