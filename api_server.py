@@ -1192,6 +1192,34 @@ def filter_stocks():
         logger.error(f"筛选股票失败: {e}")
         return jsonify({'success': False, 'message': str(e), 'data': None}), 500
 
+@app.route('/api/stock/count', methods=['GET'])
+def get_stock_count():
+    """获取股票统计数据"""
+    try:
+        db_client = MySQLClient(MYSQL_CONFIG)
+        
+        # 获取股票数量
+        sql_stocks = "SELECT COUNT(*) as count FROM stock_list"
+        result_stocks = db_client.query_one(sql_stocks)
+        
+        # 获取互动问答数量
+        sql_qa = "SELECT COUNT(*) as count FROM stock_qa"
+        result_qa = db_client.query_one(sql_qa)
+        
+        db_client.close()
+        
+        return jsonify({
+            'success': True,
+            'message': '获取成功',
+            'data': {
+                'stocks': result_stocks['count'] if result_stocks else 0,
+                'qa': result_qa['count'] if result_qa else 0
+            }
+        })
+    except Exception as e:
+        logger.error(f"获取统计数据失败: {e}")
+        return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
 @app.route('/api/stocks', methods=['GET'])
 def search_stocks():
     q = request.args.get('q', '')

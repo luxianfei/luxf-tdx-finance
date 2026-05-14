@@ -3,17 +3,9 @@
     {
       "name": "Default",
       "files": [
-        "analyze_page.py",
-        "baidu_stock.html",
-        "check_sina_api.py",
-        "check_tencent_api.py",
-        ".vscode/changelists.json",
-        "fetchers/__pycache__/baidu_finance_fetcher.cpython-313.pyc",
         "web/index.html",
-        "check_industry_map.py",
-        "web/incremental_update.html",
         "api_server.py",
-        "database/mysql_client.py"
+        ".vscode/changelists.json"
       ]
     }
   ],

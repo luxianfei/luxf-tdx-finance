@@ -3,127 +3,542 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票财务分析系统</title>
+    <title>Luxf股票深度投研分析平台</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* 首页特定样式 */
+        :root {
+            --hero-gradient-light: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #ec4899 100%);
+            --hero-gradient-dark: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+            --hero-gradient-gold: linear-gradient(135deg, #d4a574 0%, #c9a227 50%, #b8860b 100%);
+            
+            --card-gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --card-gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --card-gradient-4: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --card-gradient-5: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);
+            --card-gradient-6: linear-gradient(135deg, #434343 0%, #000000 100%);
+        }
+
+        /* Hero区域 */
         .hero-section {
-            text-align: center;
-            padding: 80px 24px;
-            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-            color: white;
-            border-radius: var(--radius-lg);
-            margin-bottom: 40px;
-        }
-
-        .hero-section h1 {
-            font-size: 2.5rem;
+            position: relative;
+            overflow: hidden;
+            padding: 35px 20px;
+            background: var(--hero-gradient-light);
+            border-radius: 0 0 16px 16px;
             margin-bottom: 16px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .hero-section p {
-            font-size: 1.125rem;
-            opacity: 0.9;
-            margin-bottom: 32px;
+        [data-theme="dark"] .hero-section {
+            background: var(--hero-gradient-dark);
+        }
+
+        [data-theme="gold"] .hero-section {
+            background: var(--hero-gradient-gold);
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            left: -20%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+            animation: float 12s ease-in-out infinite;
+        }
+
+        .hero-section::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            right: -10%;
+            width: 50%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            animation: float2 15s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, 20px) scale(1.05); }
+        }
+
+        @keyframes float2 {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(-20px, -10px) rotate(5deg); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .hero-content .platform-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            font-size: 1.25rem;
+            color: white;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-content h1 {
+            font-size: 1.625rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 6px;
+            letter-spacing: -0.2px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-content p {
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 16px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.4;
         }
 
         .hero-search {
-            max-width: 500px;
+            max-width: 650px;
             margin: 0 auto;
         }
 
         .hero-search .search-box {
-            background: white;
-            box-shadow: var(--shadow-lg);
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .hero-search .search-box input {
-            color: #333;
+            font-size: 0.9375rem;
+            padding: 14px 20px;
+            color: white;
+            background: transparent;
         }
 
-        .features-section {
+        .hero-search .search-box input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .hero-search .search-box button {
+            padding: 14px 24px;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%);
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        [data-theme="dark"] .hero-search .search-box button {
+            background: linear-gradient(135deg, #312e81 0%, #4c1d95 100%);
+        }
+
+        [data-theme="gold"] .hero-search .search-box button {
+            background: linear-gradient(135deg, #b45309 0%, #d97706 100%);
+        }
+
+        .hero-search .search-box button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 数据统计区域 */
+        .stats-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 14px 14px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-bottom: 40px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px 6px;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 6px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* 功能模块区域 */
+        .features-section {
+            margin-bottom: 16px;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .section-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .section-header p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
         }
 
         .feature-card {
-            background-color: var(--bg-card);
-            border-radius: var(--radius-lg);
-            padding: 32px;
-            text-align: center;
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 14px;
             box-shadow: var(--shadow-md);
             border: 1px solid var(--border-color);
-            transition: var(--transition);
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+
+        .feature-card.card-1::before { background: var(--card-gradient-1); }
+        .feature-card.card-2::before { background: var(--card-gradient-2); }
+        .feature-card.card-3::before { background: var(--card-gradient-3); }
+        .feature-card.card-4::before { background: var(--card-gradient-4); }
+        .feature-card.card-5::before { background: var(--card-gradient-5); }
+        .feature-card.card-6::before { background: var(--card-gradient-6); }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
         }
 
         .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+            border-color: transparent;
         }
 
         .feature-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px;
+            margin-bottom: 8px;
+            font-size: 1.25rem;
             color: white;
-            font-size: 1.75rem;
+            transition: transform 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
+        .feature-card:hover .feature-icon {
+            transform: scale(1.15);
+        }
+
+        .feature-icon.icon-1 { background: var(--card-gradient-1); }
+        .feature-icon.icon-2 { background: var(--card-gradient-2); }
+        .feature-icon.icon-3 { background: var(--card-gradient-3); }
+        .feature-icon.icon-4 { background: var(--card-gradient-4); }
+        .feature-icon.icon-5 { background: var(--card-gradient-5); }
+        .feature-icon.icon-6 { background: var(--card-gradient-6); }
+
         .feature-card h3 {
-            font-size: 1.25rem;
-            margin-bottom: 12px;
+            font-size: 1rem;
+            font-weight: 600;
             color: var(--text-primary);
+            margin-bottom: 5px;
         }
 
         .feature-card p {
             color: var(--text-secondary);
-            line-height: 1.6;
+            line-height: 1.4;
+            font-size: 0.75rem;
+            margin-bottom: 6px;
         }
 
-        .quick-links {
-            background-color: var(--bg-card);
-            border-radius: var(--radius-lg);
-            padding: 32px;
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--border-color);
-        }
-
-        .quick-links h2 {
-            margin-bottom: 20px;
-            color: var(--text-primary);
-        }
-
-        .stock-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .stock-link {
+        .feature-card .arrow {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-            text-decoration: none;
-            border-radius: var(--radius-md);
-            transition: var(--transition);
-            border: 1px solid var(--border-color);
+            gap: 6px;
+            color: var(--accent-primary);
+            font-weight: 500;
+            font-size: 0.875rem;
+            opacity: 0;
+            transform: translateX(-15px);
+            transition: all 0.4s ease;
         }
 
-        .stock-link:hover {
-            background-color: var(--accent-primary);
+        .feature-card:hover .arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* 快速操作区域 */
+        .quick-actions {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .quick-actions-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .quick-actions h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .quick-links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
+        }
+
+        .quick-link {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 8px;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .quick-link:hover {
+            background: var(--accent-primary);
             color: white;
-            border-color: var(--accent-primary);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .quick-link i {
+            font-size: 1.75rem;
+        }
+
+        .quick-link span {
+            font-weight: 600;
+            font-size: 0.9375rem;
+        }
+
+        /* 页脚 */
+        .footer {
+            background: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+            padding: 40px 24px;
+            text-align: center;
+        }
+
+        .footer p {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+        }
+
+        /* 主题切换下拉菜单 */
+        .theme-dropdown {
+            position: relative;
+        }
+
+        .theme-toggle {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 1.25rem;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-hover);
+            color: var(--accent-primary);
+            transform: rotate(15deg);
+        }
+
+        .theme-options {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            min-width: 140px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .theme-dropdown:hover .theme-options,
+        .theme-options:hover {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .theme-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 0.9375rem;
+            transition: background 0.2s ease;
+        }
+
+        .theme-option:hover {
+            background: var(--bg-hover);
+        }
+
+        .theme-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+        }
+
+        .theme-dot.light { background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%); }
+        .theme-dot.dark { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        .theme-dot.gold { background: linear-gradient(135deg, #d4af37 0%, #f0d76e 100%); }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .hero-section {
+                padding: 80px 24px;
+                min-height: auto;
+            }
+
+            .hero-content h1 {
+                font-size: 2.25rem;
+            }
+
+            .hero-content p {
+                font-size: 1.125rem;
+            }
+
+            .hero-search .search-box input {
+                padding: 20px 24px;
+                font-size: 1.125rem;
+            }
+
+            .hero-search .search-box button {
+                padding: 20px 28px;
+            }
+
+            .stats-grid {
+                gap: 20px;
+            }
+
+            .stat-value {
+                font-size: 2.5rem;
+            }
+
+            .feature-card {
+                padding: 28px;
+            }
+
+            .feature-icon {
+                width: 64px;
+                height: 64px;
+                font-size: 1.75rem;
+            }
+
+            .quick-actions {
+                padding: 32px 24px;
+            }
+
+            .quick-actions-header {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -145,9 +560,25 @@
             </div>
         </div>
         <div class="header-right">
-            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
-                <i class="fas fa-moon" id="themeIcon"></i>
-            </button>
+            <div class="theme-dropdown">
+                <button class="theme-toggle" id="themeToggle" title="切换主题">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+                <div class="theme-options">
+                    <div class="theme-option" onclick="setTheme('light')">
+                        <div class="theme-dot light"></div>
+                        <span>浅色模式</span>
+                    </div>
+                    <div class="theme-option" onclick="setTheme('dark')">
+                        <div class="theme-dot dark"></div>
+                        <span>深色模式</span>
+                    </div>
+                    <div class="theme-option" onclick="setTheme('gold')">
+                        <div class="theme-dot gold"></div>
+                        <span>金色模式</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -155,81 +586,133 @@
     <main class="main-content">
         <!-- Hero区域 -->
         <section class="hero-section">
-            <h1>Luxf股票深度投研分析平台</h1>
-            <p>基于通达信F10数据，提供专业的季度财务指标分析</p>
-            <div class="hero-search">
-                <div class="search-box">
-                    <input type="text" id="heroSearch" placeholder="输入股票代码，如：688456">
-                    <button onclick="searchFromHero()">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- 功能特性 -->
-        <section class="features-section">
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-chart-pie"></i>
-                </div>
-                <h3>季度指标分析</h3>
-                <p>毛利率、营收同比、扣非净利润同比等关键财务指标，支持16个季度历史数据对比</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="hero-content">
+                <div class="platform-icon">
                     <i class="fas fa-chart-line"></i>
                 </div>
-                <h3>可视化图表</h3>
-                <p>直观的数据趋势图表，支持多维度指标切换，快速把握财务变化趋势</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-table"></i>
+                <h1>Luxf股票深度投研分析平台</h1>
+                <p>专业的股票财务数据分析工具，基于通达信F10数据，提供全面的季度财务指标分析与可视化</p>
+                <div class="hero-search">
+                    <div class="search-box">
+                        <input type="text" id="heroSearch" placeholder="输入股票代码，如：688456">
+                        <button onclick="searchFromHero()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
                 </div>
-                <h3>明细数据</h3>
-                <p>完整的季度财务数据表格，支持数据导出，方便进一步分析研究</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-moon"></i>
-                </div>
-                <h3>深色模式</h3>
-                <p>支持浅色/深色主题切换，适应不同使用场景，保护视力</p>
             </div>
         </section>
 
-        <!-- 快速链接 -->
-        <section class="quick-links">
-            <h2>快速查看</h2>
-            <div class="stock-links">
-                <a href="stock_filter.html" class="stock-link">
-                    <i class="fas fa-filter"></i>
-                    财务指标筛选
-                </a>
-                <a href="my_stocks.html" class="stock-link">
-                    <i class="fas fa-star"></i>
-                    自选股管理
-                </a>
-                <a href="stock_detail.html?code=688456" class="stock-link">
-                    <i class="fas fa-chart-bar"></i>
-                    有研粉材 (688456)
-                </a>
-                <a href="stock_detail.html?code=000001" class="stock-link">
-                    <i class="fas fa-chart-bar"></i>
-                    平安银行 (000001)
-                </a>
-                <a href="stock_detail.html?code=600519" class="stock-link">
-                    <i class="fas fa-chart-bar"></i>
-                    贵州茅台 (600519)
-                </a>
+        <!-- 数据统计区域 -->
+        <section class="stats-section">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="statStocks">-</div>
+                    <div class="stat-label">股票数量</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statQuarters">16</div>
+                    <div class="stat-label">历史季度</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statIndicators">20+</div>
+                    <div class="stat-label">财务指标</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statQA">-</div>
+                    <div class="stat-label">互动问答</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 功能模块区域 -->
+        <section class="features-section">
+            <div class="section-header">
+                <h2>核心功能</h2>
+                <p>全方位的股票分析工具，助您做出明智的投资决策</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card card-1" onclick="navigateTo('stock_detail.html?code=688456')">
+                    <div class="feature-icon icon-1">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>股票详情分析</h3>
+                    <p>查看个股的完整财务数据、行情走势、互动问答等全方位信息</p>
+                    <span class="arrow">
+                        <span>查看详情</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
+                </div>
+
+                <div class="feature-card card-2" onclick="navigateTo('stock_filter.html')">
+                    <div class="feature-icon icon-2">
+                        <i class="fas fa-filter"></i>
+                    </div>
+                    <h3>财务指标筛选</h3>
+                    <p>通过毛利率、营收同比、扣非净利润等多维度指标筛选优质股票</p>
+                    <span class="arrow">
+                        <span>开始筛选</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
+                </div>
+
+                <div class="feature-card card-3" onclick="navigateTo('my_stocks.html')">
+                    <div class="feature-icon icon-3">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <h3>自选股管理</h3>
+                    <p>管理您关注的股票列表，支持批量导入导出和数据刷新</p>
+                    <span class="arrow">
+                        <span>管理自选</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
+                </div>
+
+                <div class="feature-card card-4" onclick="navigateTo('incremental_update.html')">
+                    <div class="feature-icon icon-4">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <h3>数据更新</h3>
+                    <p>全市场行情数据和互动信息更新，保持数据最新</p>
+                    <span class="arrow">
+                        <span>更新数据</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
+                </div>
+
+                <div class="feature-card card-5" onclick="navigateTo('stock_detail.html?code=688456')">
+                    <div class="feature-icon icon-5">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <h3>季度指标分析</h3>
+                    <p>毛利率、营收同比、净利润等关键财务指标的多季度对比分析</p>
+                    <span class="arrow">
+                        <span>查看分析</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 快速操作区域 -->
+        <section class="quick-actions">
+            <div class="quick-actions-header">
+                <h3>快速访问</h3>
+            </div>
+            <div class="quick-links-grid" id="quickLinksGrid">
+                <!-- 动态加载自选股 -->
+                <div class="quick-link loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>加载中...</span>
+                </div>
             </div>
         </section>
     </main>
 
     <!-- 页脚 -->
     <footer class="footer">
-        <p>数据来源：通达信F10 | 仅供参考，不构成投资建议</p>
+        <p>数据来源：通达信F10、百度财经、同花顺 | 仅供参考，不构成投资建议</p>
     </footer>
 
     <script>
@@ -240,19 +723,35 @@
             updateThemeIcon(savedTheme);
         }
 
-        // 切换主题
+        // 设置主题
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            updateThemeIcon(theme);
+        }
+
+        // 切换主题（循环切换）
         function toggleTheme() {
+            const themes = ['light', 'dark', 'gold'];
             const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            updateThemeIcon(newTheme);
+            const currentIndex = themes.indexOf(currentTheme);
+            const newTheme = themes[(currentIndex + 1) % themes.length];
+            setTheme(newTheme);
         }
 
         // 更新主题图标
         function updateThemeIcon(theme) {
             const icon = document.getElementById('themeIcon');
-            icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            switch(theme) {
+                case 'dark':
+                    icon.className = 'fas fa-sun';
+                    break;
+                case 'gold':
+                    icon.className = 'fas fa-crown';
+                    break;
+                default:
+                    icon.className = 'fas fa-moon';
+            }
         }
 
         // 搜索股票
@@ -273,9 +772,82 @@
             }
         }
 
+        // 导航到指定页面
+        function navigateTo(url) {
+            window.location.href = url;
+        }
+
+        // 获取统计数据
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stock/count');
+                const result = await response.json();
+                if (result.success && result.data) {
+                    document.getElementById('statStocks').textContent = result.data.stocks || '-';
+                    document.getElementById('statQA').textContent = result.data.qa || '-';
+                }
+            } catch (e) {
+                console.log('无法获取统计数据');
+            }
+        }
+
+        // 加载自选股快速访问列表
+        async function loadQuickLinks() {
+            try {
+                const response = await fetch('/api/my_stocks');
+                const result = await response.json();
+                
+                const grid = document.getElementById('quickLinksGrid');
+                grid.innerHTML = '';
+                
+                if (result.success && result.data && result.data.stocks && result.data.stocks.length > 0) {
+                    // 优先显示核心池股票，然后显示普通自选股
+                    const coreStocks = result.data.stocks.filter(s => s.pool_type === 'core');
+                    const normalStocks = result.data.stocks.filter(s => s.pool_type !== 'core');
+                    const displayStocks = [...coreStocks, ...normalStocks].slice(0, 6);
+                    
+                    displayStocks.forEach(stock => {
+                        const link = document.createElement('a');
+                        link.href = `stock_detail.html?code=${stock.code}`;
+                        link.className = 'quick-link';
+                        link.innerHTML = `
+                            <i class="fas fa-chart-bar"></i>
+                            <span>${stock.name}</span>
+                        `;
+                        grid.appendChild(link);
+                    });
+                } else {
+                    // 如果没有自选股，显示默认股票
+                    const defaultStocks = [
+                        { code: '688456', name: '有研粉材' },
+                        { code: '000001', name: '平安银行' },
+                        { code: '600519', name: '贵州茅台' },
+                        { code: '300750', name: '宁德时代' },
+                        { code: '601318', name: '中国平安' },
+                        { code: '000858', name: '五粮液' }
+                    ];
+                    
+                    defaultStocks.forEach(stock => {
+                        const link = document.createElement('a');
+                        link.href = `stock_detail.html?code=${stock.code}`;
+                        link.className = 'quick-link';
+                        link.innerHTML = `
+                            <i class="fas fa-chart-bar"></i>
+                            <span>${stock.name}</span>
+                        `;
+                        grid.appendChild(link);
+                    });
+                }
+            } catch (e) {
+                console.log('无法获取自选股数据');
+            }
+        }
+
         // 绑定回车事件
         document.addEventListener('DOMContentLoaded', function() {
             loadTheme();
+            loadStats();
+            loadQuickLinks();
             
             document.getElementById('stockSearch').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') searchStock();
@@ -283,6 +855,18 @@
             
             document.getElementById('heroSearch').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') searchFromHero();
+            });
+
+            // 点击页面其他地方关闭主题下拉菜单
+            document.addEventListener('click', function(e) {
+                const dropdown = document.querySelector('.theme-dropdown');
+                if (!dropdown.contains(e.target)) {
+                    const options = document.querySelector('.theme-options');
+                    if (options) {
+                        options.style.opacity = '0';
+                        options.style.visibility = 'hidden';
+                    }
+                }
             });
         });
     </script>
