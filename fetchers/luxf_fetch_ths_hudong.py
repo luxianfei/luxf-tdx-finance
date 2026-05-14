@@ -61,13 +61,13 @@ def fetch_page_with_requests(code, page, extra=""):
     ts = int(time.time() * 1000)
     url = (f"{API_BASE}?top=0&totalcache=1&pagesize=20&page={page}&code={code}"
            f"{extra}&sort=atime&jsonp=callback&return=jsonp&true=callback&_={ts}")
-    
+
     headers = get_random_headers()
-    
+
     try:
         # 添加随机延迟
         random_delay()
-        
+
         response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
         raw = response.text.strip()
@@ -119,74 +119,77 @@ def fetch_qa_data(code, limit=20, fetch_all=False, max_years=3):
     :param limit: 返回条数限制（当fetch_all=True时无效）
     :param fetch_all: 是否获取所有数据
     :param max_years: 最多获取多少年的数据
-    :return: 问答数据列表，按时间倒序排列
+    :return: 问答数据列表，按回答时间倒序排列
     """
     all_items = []
     page = 1
-    
-    # 计算3年前的日期
+
     three_years_ago = (datetime.now() - timedelta(days=max_years * 365)).strftime('%Y-%m-%d')
-    
+
     while True:
         data = fetch_page_with_requests(code, page)
         items = data.get('result', [])
-        
+
         if not items:
             break
-        
-        # 转换数据格式 - 使用正确的字段名
+
         for item in items:
-            # 提取提问者名称（去掉"投资者_"前缀）
             uid = item.get('uid', '')
             ask_user = uid.replace('投资者_', '') if uid.startswith('投资者_') else uid
-            
+
             ask_time = item.get('qtime', '')
-            
-            # 过滤时间范围（只获取已回复且在3年内的数据）
+            answer_time = item.get('atime', '')
+
             is_replied = item.get('isreply', '0') == '1'
             if not is_replied:
                 continue
-            
-            # 检查时间是否在3年内
-            if ask_time:
+
+            # 检查回答时间是否在3年内（而不是提问时间）
+            # 因为可能存在很早提问但最近才回答的情况
+            if answer_time:
                 try:
-                    ask_date = ask_time[:10]  # 获取日期部分
-                    if ask_date < three_years_ago:
-                        # 已经超过3年，停止采集
-                        all_items.sort(key=lambda x: x['ask_time'] or '', reverse=True)
-                        return all_items
+                    answer_date = answer_time[:10]
+                    if answer_date < three_years_ago:
+                        break
                 except:
                     pass
-            
+
             all_items.append({
-                'id': item.get('seq'),           # 问题ID
-                'code': item.get('code'),        # 股票代码
-                'title': item.get('question', '')[:50] + '...' if len(item.get('question', '')) > 50 else item.get('question', ''),  # 问题标题（截取）
-                'content': item.get('question', ''),  # 提问内容
-                'answer': item.get('answer', ''),     # 回答内容
-                'ask_time': ask_time,                  # 提问时间
-                'answer_time': item.get('atime', ''), # 回答时间
-                'ask_user': ask_user,                 # 提问者
-                'status': item.get('isreply', '0'),   # 是否已回复 1=已回复
-                'source': item.get('source', '')      # 来源
+                'id': item.get('seq'),
+                'code': item.get('code'),
+                'title': item.get('question', '')[:50] + '...' if len(item.get('question', '')) > 50 else item.get('question', ''),
+                'content': item.get('question', ''),
+                'answer': item.get('answer', ''),
+                'ask_time': ask_time,
+                'answer_time': answer_time,
+                'ask_user': ask_user,
+                'status': item.get('isreply', '0'),
+                'source': item.get('source', '')
             })
-        
-        # 如果不是获取全部数据，检查是否达到限制
+
+        # 如果遇到超过3年的数据，停止翻页
+        if answer_time:
+            try:
+                answer_date = answer_time[:10]
+                if answer_date < three_years_ago:
+                    break
+            except:
+                pass
+
         if not fetch_all and len(all_items) >= limit:
             break
-        
+
         page += 1
-        
-        # 最多获取100页（防止无限循环）
+
         if page > 100:
             break
-    
-    # 按提问时间倒序排列
-    all_items.sort(key=lambda x: x['ask_time'] or '', reverse=True)
-    
+
+    # 按回答时间倒序排列（而不是提问时间）
+    all_items.sort(key=lambda x: x['answer_time'] or '', reverse=True)
+
     if not fetch_all:
         return all_items[:limit]
-    
+
     return all_items
 
 def main():

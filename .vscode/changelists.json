@@ -3,8 +3,10 @@
     {
       "name": "Default",
       "files": [
-        "README.md",
-        ".vscode/changelists.json"
+        ".vscode/changelists.json",
+        "fetchers/luxf_fetch_ths_hudong.py",
+        "fetchers/__pycache__/luxf_fetch_ths_hudong.cpython-313.pyc",
+        "web/js/app.js"
       ]
     }
   ],

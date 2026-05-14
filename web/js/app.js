@@ -1121,32 +1121,68 @@ function renderPagination(data) {
 
 /**
  * 格式化日期时间
+ * 修复时区转换问题：手动解析日期字符串，避免JavaScript的时区转换导致日期偏移
  */
 function formatDateTime(datetimeStr) {
     if (!datetimeStr) return '';
     
     try {
-        const date = new Date(datetimeStr);
-        if (isNaN(date.getTime())) {
-            // 尝试解析其他格式
-            if (datetimeStr.length === 14) {
-                // 格式：20240101120000
-                const year = datetimeStr.substring(0, 4);
-                const month = datetimeStr.substring(4, 6);
-                const day = datetimeStr.substring(6, 8);
-                const hour = datetimeStr.substring(8, 10);
-                const minute = datetimeStr.substring(10, 12);
-                return `${year}-${month}-${day} ${hour}:${minute}`;
-            }
-            return datetimeStr;
+        // 优先手动解析日期字符串，避免时区转换问题
+        
+        // 格式1：2026-05-14 16:31:54 或 2026-05-14 16:31
+        const datetimeMatch = datetimeStr.match(/^(\d{4})[-/](\d{2})[-/](\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/);
+        if (datetimeMatch) {
+            const year = datetimeMatch[1];
+            const month = datetimeMatch[2];
+            const day = datetimeMatch[3];
+            const hour = datetimeMatch[4];
+            const minute = datetimeMatch[5];
+            return `${year}/${month}/${day} ${hour}:${minute}`;
         }
-        return date.toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        
+        // 格式2：RFC 822 格式（如 Thu, 14 May 2026 16:31:54 GMT）
+        const rfc822Match = datetimeStr.match(/^[A-Za-z]{3},\s*(\d{2})\s+([A-Za-z]{3})\s+(\d{4})\s+(\d{2}):(\d{2}):(\d{2})\s+GMT$/);
+        if (rfc822Match) {
+            const day = rfc822Match[1];
+            const monthName = rfc822Match[2];
+            const year = rfc822Match[3];
+            const hour = rfc822Match[4];
+            const minute = rfc822Match[5];
+            
+            // 将月份名称转换为数字
+            const monthMap = {
+                'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+                'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+                'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+            };
+            const month = monthMap[monthName] || '01';
+            
+            return `${year}/${month}/${day} ${hour}:${minute}`;
+        }
+        
+        // 格式3：数字格式 20240101120000
+        if (datetimeStr.length === 14) {
+            const year = datetimeStr.substring(0, 4);
+            const month = datetimeStr.substring(4, 6);
+            const day = datetimeStr.substring(6, 8);
+            const hour = datetimeStr.substring(8, 10);
+            const minute = datetimeStr.substring(10, 12);
+            return `${year}/${month}/${day} ${hour}:${minute}`;
+        }
+        
+        // 最后尝试使用Date对象（作为后备）
+        const date = new Date(datetimeStr);
+        if (!isNaN(date.getTime())) {
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        return datetimeStr;
     } catch (e) {
         return datetimeStr;
     }
