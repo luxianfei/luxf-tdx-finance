@@ -27,8 +27,8 @@
     --primary-color: #3b82f6;
     --primary-dark: #2563eb;
     
-    --success-color: #ef4444;    /* 红色 - 上涨/增长 */
-    --danger-color: #22c55e;    /* 绿色 - 下跌/负增长 */
+    --success-color: #ff0000;    /* 红色 - 上涨/增长 */
+    --danger-color: #00aa00;    /* 绿色 - 下跌/负增长 */
     --warning-color: #ed8936;
     
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -65,8 +65,8 @@
     --primary-color: #3b82f6;
     --primary-dark: #2563eb;
     
-    --success-color: #f87171;    /* 红色 - 上涨/增长 */
-    --danger-color: #4ade80;    /* 绿色 - 下跌/负增长 */
+    --success-color: #ff3333;    /* 红色 - 上涨/增长 */
+    --danger-color: #00cc00;    /* 绿色 - 下跌/负增长 */
     --warning-color: #fb923c;
     
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -97,8 +97,8 @@
     --primary-color: #d4af37;
     --primary-dark: #b8960c;
     
-    --success-color: #ff6b6b;    /* 红色 - 上涨/增长 */
-    --danger-color: #4ade80;    /* 绿色 - 下跌/负增长 */
+    --success-color: #ff4444;    /* 红色 - 上涨/增长 */
+    --danger-color: #00dd00;    /* 绿色 - 下跌/负增长 */
     --warning-color: #d4af37;
     
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -469,6 +469,11 @@ div.Pfosts.tosan,
 .price-change.negative,
 .price-change-percent.negative {
     color: var(--danger-color);
+}
+
+.price-change.neutral,
+.price-change-percent.neutral {
+    color: #808080;
 }
 
 .stock-tags {
@@ -965,6 +970,27 @@ div.Pfosts.tosan,
     border-bottom: none;
 }
 
+/* 最近 3 天（72 小时）问答高亮 */
+.qa-item.recent {
+    background-color: rgba(251, 191, 36, 0.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border: 2px solid rgba(251, 191, 36, 0.6);
+}
+
+/* 深色主题下的最近问答高亮 */
+[data-theme="dark"] .qa-item.recent {
+    background-color: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.5);
+}
+
+/* 金色主题下的最近问答高亮 */
+[data-theme="gold"] .qa-item.recent {
+    background-color: rgba(212, 175, 55, 0.2);
+    border-color: rgba(212, 175, 55, 0.6);
+}
+
 /* 提问行 */
 .qa-question-row {
     display: flex;
@@ -1051,7 +1077,6 @@ div.Pfosts.tosan,
     padding: 1px 3px;
     border-radius: 2px;
 }
-
 
 /* 分页控件 */
 .qa-pagination {
@@ -2101,23 +2126,85 @@ div.Pfosts.tosan,
     }
 }
 
-/* 导航按钮 */
-.nav-btn {
-    width: 36px;
-    height: 36px;
+/* Toast关闭按钮 */
+.toast-close {
+    background: none;
     border: none;
-    border-radius: 50%;
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
+    color: white;
+    font-size: 1rem;
     cursor: pointer;
-    transition: var(--transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
+    padding: 0;
+    margin-left: 10px;
 }
 
-.nav-btn:hover {
-    background: var(--primary-color);
-    color: white;
+.toast-close:hover {
+    opacity: 0.7;
+}
+
+/* 消息提示 */
+.message-success {
+    color: var(--success-color);
+    padding: 12px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+}
+
+.message-error {
+    color: var(--danger-color);
+    padding: 12px;
+    background: rgba(34, 197, 94, 0.1);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+}
+
+/* 表格固定表头 */
+.table-wrapper.fixed-header {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.table-wrapper.fixed-header table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* 移动端响应式 */
+@media (max-width: 768px) {
+    .filter-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .filter-item {
+        width: 100%;
+        min-width: 100%;
+    }
+    
+    .filter-item-single {
+        width: 100%;
+        min-width: 100%;
+    }
+    
+    .range-input input {
+        width: calc(50% - 10px);
+    }
+    
+    .result-stats {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+    
+    .pagination {
+        flex-wrap: wrap;
+    }
+    
+    .pagination-btn {
+        flex: 1;
+        min-width: 36px;
+    }
 }

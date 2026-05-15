@@ -258,16 +258,25 @@ async function loadF10Market(code) {
                 const change = data.price_change !== null && data.price_change !== undefined ? parseFloat(data.price_change) : 0;
                 const changePercent = data.change_percent !== null && data.change_percent !== undefined ? parseFloat(data.change_percent) : 0;
                 
-                if (change >= 0) {
+                // 移除所有样式类
+                changeElement.classList.remove('positive', 'negative', 'neutral');
+                changePercentElement.classList.remove('positive', 'negative', 'neutral');
+                
+                if (change > 0) {
                     changeElement.textContent = '+' + change.toFixed(2);
                     changePercentElement.textContent = '+' + changePercent.toFixed(2) + '%';
                     changeElement.classList.add('positive');
                     changePercentElement.classList.add('positive');
-                } else {
+                } else if (change < 0) {
                     changeElement.textContent = change.toFixed(2);
                     changePercentElement.textContent = changePercent.toFixed(2) + '%';
                     changeElement.classList.add('negative');
                     changePercentElement.classList.add('negative');
+                } else {
+                    changeElement.textContent = change.toFixed(2);
+                    changePercentElement.textContent = changePercent.toFixed(2) + '%';
+                    changeElement.classList.add('neutral');
+                    changePercentElement.classList.add('neutral');
                 }
             } else {
                 priceChangeInfo.style.display = 'none';
@@ -1004,6 +1013,108 @@ function highlightKeyword(text, keyword) {
 /**
  * 渲染互动问答数据（支持关键字高亮）
  */
+/**
+ * 判断时间是否在最近72小时内
+ */
+function isRecentAnswer(answerTimeStr) {
+    if (!answerTimeStr) return false;
+    
+    try {
+        var answerDate;
+        
+        // 格式1：YYYY-MM-DD HH:MM:SS
+        var standardMatch = answerTimeStr.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+        if (standardMatch) {
+            answerDate = new Date(
+                parseInt(standardMatch[1]),
+                parseInt(standardMatch[2]) - 1,
+                parseInt(standardMatch[3]),
+                parseInt(standardMatch[4]),
+                parseInt(standardMatch[5]),
+                parseInt(standardMatch[6])
+            );
+        } else {
+            // 格式2：RFC 822 格式
+            var rfc822Match = answerTimeStr.match(/^[A-Za-z]{3},\s*(\d{2})\s+([A-Za-z]{3})\s+(\d{4})\s+(\d{2}):(\d{2}):(\d{2})\s+GMT$/);
+            if (rfc822Match) {
+                var monthMap = {
+                    "Jan": 0, "Feb": 1, "Mar": 2, "Apr": 3,
+                    "May": 4, "Jun": 5, "Jul": 6, "Aug": 7,
+                    "Sep": 8, "Oct": 9, "Nov": 10, "Dec": 11
+                };
+                answerDate = new Date(
+                    parseInt(rfc822Match[3]),
+                    monthMap[rfc822Match[2]] || 0,
+                    parseInt(rfc822Match[1]),
+                    parseInt(rfc822Match[4]),
+                    parseInt(rfc822Match[5]),
+                    parseInt(rfc822Match[6])
+                );
+            } else {
+                answerDate = new Date(answerTimeStr);
+            }
+        }
+        
+        var seventyTwoHoursAgo = new Date();
+        seventyTwoHoursAgo.setHours(seventyTwoHoursAgo.getHours() - 72);
+        
+        return answerDate >= seventyTwoHoursAgo;
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * 判断时间是否在最近72小时内
+ */
+function isRecentAnswer(answerTimeStr) {
+    if (!answerTimeStr) return false;
+    
+    try {
+        var answerDate;
+        
+        // 格式1：YYYY-MM-DD HH:MM:SS
+        var standardMatch = answerTimeStr.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+        if (standardMatch) {
+            answerDate = new Date(
+                parseInt(standardMatch[1]),
+                parseInt(standardMatch[2]) - 1,
+                parseInt(standardMatch[3]),
+                parseInt(standardMatch[4]),
+                parseInt(standardMatch[5]),
+                parseInt(standardMatch[6])
+            );
+        } else {
+            // 格式2：RFC 822 格式
+            var rfc822Match = answerTimeStr.match(/^[A-Za-z]{3},\s*(\d{2})\s+([A-Za-z]{3})\s+(\d{4})\s+(\d{2}):(\d{2}):(\d{2})\s+GMT$/);
+            if (rfc822Match) {
+                var monthMap = {
+                    "Jan": 0, "Feb": 1, "Mar": 2, "Apr": 3,
+                    "May": 4, "Jun": 5, "Jul": 6, "Aug": 7,
+                    "Sep": 8, "Oct": 9, "Nov": 10, "Dec": 11
+                };
+                answerDate = new Date(
+                    parseInt(rfc822Match[3]),
+                    monthMap[rfc822Match[2]] || 0,
+                    parseInt(rfc822Match[1]),
+                    parseInt(rfc822Match[4]),
+                    parseInt(rfc822Match[5]),
+                    parseInt(rfc822Match[6])
+                );
+            } else {
+                answerDate = new Date(answerTimeStr);
+            }
+        }
+        
+        var seventyTwoHoursAgo = new Date();
+        seventyTwoHoursAgo.setHours(seventyTwoHoursAgo.getHours() - 72);
+        
+        return answerDate >= seventyTwoHoursAgo;
+    } catch (error) {
+        return false;
+    }
+}
+
 function renderQAData(qaList, keyword = '') {
     const container = document.getElementById('qaContainer');
     
@@ -1018,13 +1129,15 @@ function renderQAData(qaList, keyword = '') {
         const hasAnswer = item.answer && item.answer.trim();
         const askTime = formatDateTime(item.ask_time);
         const answerTime = item.answer_time ? formatDateTime(item.answer_time) : '';
+        // 判断是否为最近72小时内的答复
+        const isRecent = hasAnswer && isRecentAnswer(item.answer_time);
         
         // 高亮关键字
         const highlightedQuestion = highlightKeyword(item.question, keyword);
         const highlightedAnswer = highlightKeyword(item.answer, keyword);
         
         html += `
-            <div class="qa-item">
+            <div class="${isRecent ? "qa-item recent" : "qa-item"}">
                 <!-- 提问部分（一行显示） -->
                 <div class="qa-question-row">
                     <span class="qa-icon question-icon">
