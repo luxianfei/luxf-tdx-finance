@@ -3,9 +3,25 @@
     {
       "name": "Default",
       "files": [
-        "web/css/style.css",
+        "database/__pycache__/mysql_client.cpython-313.pyc",
+        "add_db_methods.py",
+        "add_qa_filter_api.py",
+        "add_qa_nav.py",
+        "web/qa_filter.html",
         ".vscode/changelists.json",
-        "web/js/app.js"
+        "add_qa_api_direct.py",
+        "api_server.py",
+        "database/mysql_client.py",
+        "add_db_methods_fix.py",
+        "web/index.html",
+        "web/css/style.css",
+        "web/stock_detail.html",
+        "fetchers/baidu_finance_fetcher.py",
+        "fetchers/__pycache__/baidu_finance_fetcher.cpython-313.pyc",
+        "page_301536.html",
+        "playwright_prospectus.py",
+        "save_page.py",
+        "test_prospectus.py"
       ]
     }
   ],

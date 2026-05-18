@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互动问答筛选 - 股票财务数据分析</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .filter-select {
+            padding: 10px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            cursor: pointer;
+            min-width: 120px;
+            transition: var(--transition);
+        }
+        
+        .filter-select:hover {
+            border-color: var(--accent-color);
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .highlight-row {
+            background-color: rgba(59, 130, 246, 0.1) !important;
+            border-left: 4px solid var(--accent-color);
+        }
+        
+        .highlight-row:hover {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+        }
+
+        [data-theme="dark"] .highlight-row {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+        }
+        
+        [data-theme="dark"] .highlight-row:hover {
+            background-color: rgba(59, 130, 246, 0.2) !important;
+        }
+
+        /* 弹窗宽度与表格一致 */
+        #qaDetailModal .modal-content {
+            max-width: 1400px;
+            width: calc(100% - 48px);
+            max-height: 60vh;
+        }
+
+        @media (min-width: 768px) {
+            #qaDetailModal .modal-content {
+                width: calc(100% - 48px);
+            }
+        }
+
+        /* 优化页面整体排版 */
+        .filter-card {
+            margin-bottom: 24px;
+        }
+
+        .filter-row {
+            align-items: center;
+            gap: 16px;
+        }
+
+        .filter-label {
+            min-width: 100px;
+            font-weight: 500;
+        }
+
+        .stats-section {
+            margin-bottom: 24px;
+        }
+
+        .stats-card-horizontal {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--card-bg) 0%, var(--bg-secondary) 100%);
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 30px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%);
+            border-radius: 12px;
+            color: white;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
+        }
+
+        .stat-content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .stat-divider {
+            width: 1px;
+            height: 50px;
+            background: var(--border-color);
+            margin: 0 10px;
+        }
+
+        @media (max-width: 576px) {
+            .stats-card-horizontal {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .stat-divider {
+                width: 50px;
+                height: 1px;
+                margin: 8px 0;
+            }
+            
+            .stat-card {
+                padding: 0;
+            }
+        }
+
+        .result-section {
+            margin-top: 8px;
+        }
+
+        .section-header {
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .pagination-info {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* 横向布局 */
+        .filter-row-horizontal {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 16px 20px;
+        }
+
+        .filter-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+            min-width: 80px;
+            padding-right: 16px;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .filter-input-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .filter-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 12px;
+        }
+
+        @media (max-width: 576px) {
+            .filter-row-horizontal {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            
+            .filter-title {
+                border-right: none;
+                padding-right: 0;
+                min-width: auto;
+                width: 100%;
+            }
+            
+            .filter-actions {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-left">
+            <a href="/" class="logo">
+                <i class="fas fa-chart-line"></i>
+                <span>Luxf股票深度投研分析平台</span>
+            </a>
+        </div>
+        <div class="header-center">
+            <div class="search-box">
+                <input type="text" id="stockSearch" placeholder="输入股票代码/名称">
+                <button onclick="searchStock()">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="/my_stocks.html" class="nav-btn" title="自选股管理">
+                <i class="fas fa-star"></i>
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <i class="fas fa-moon" id="themeIcon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 页面标题 -->
+        <section class="page-header">
+            <h1>互动问答筛选</h1>
+            <p>筛选近期有互动问答答复的股票</p>
+        </section>
+
+        <!-- 筛选条件区域 -->
+        <section class="filter-section">
+            <div class="filter-card">
+                <div class="filter-row-horizontal">
+                    <h3 class="filter-title">筛选条件</h3>
+                    <div class="filter-input-group">
+                        <label class="filter-label">答复时间范围</label>
+                        <select class="filter-select" id="timeRangeSelect" onchange="onTimeRangeChange()">
+                            <option value="today">当天</option>
+                            <option value="1day" selected>近1日</option>
+                            <option value="2day">近2日</option>
+                            <option value="3day">近3日</option>
+                        </select>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn btn-primary" onclick="filterQA()">
+                            <i class="fas fa-search"></i> 筛选
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetFilter()">
+                            <i class="fas fa-refresh"></i> 重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 统计信息 -->
+        <section class="stats-section">
+            <div class="stats-card-horizontal">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalStocks">--</div>
+                        <div class="stat-label">符合条件的股票数</div>
+                    </div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="totalQA">--</div>
+                        <div class="stat-label">问答总数</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 股票列表 -->
+        <section class="result-section">
+            <div class="section-header">
+                <h3>筛选结果</h3>
+                <div class="pagination-info" id="paginationInfo">
+                    显示第 1-0 条，共 0 条
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table" id="resultTable">
+                    <thead>
+                        <tr>
+                            <th>股票代码</th>
+                            <th>股票名称</th>
+                            <th>最新答复时间</th>
+                            <th>问答数量</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultBody">
+                        <tr>
+                            <td colspan="5" class="empty-cell">请选择筛选条件并点击筛选</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页控件 -->
+            <div class="pagination-container">
+                <div class="pagination-info" id="paginationInfo">
+                    <i class="fas fa-list"></i>
+                    <span>显示第 <strong>1-0</strong> 条，共 <strong>0</strong> 条</span>
+                </div>
+                <div class="pagination" id="pagination">
+                    <button class="page-btn" id="prevPage" onclick="prevPage()" disabled title="上一页">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="page-numbers" id="pageNumbers">
+                        <span class="page-number active">1</span>
+                    </div>
+                    <button class="page-btn" id="nextPage" onclick="nextPage()" disabled title="下一页">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <div class="page-size-selector">
+                        <select id="pageSizeSelect" onchange="onPageSizeChange()">
+                            <option value="10">10条/页</option>
+                            <option value="20" selected>20条/页</option>
+                            <option value="50">50条/页</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 问答详情弹窗 -->
+        <div class="modal-overlay" id="qaDetailModal" onclick="closeQADetailModal()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 id="modalStockTitle">互动问答详情</h3>
+                    <button class="modal-close" onclick="closeQADetailModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- 问答列表 -->
+                    <div class="qa-container" id="qaDetailContainer">
+                        <div class="empty-state">暂无互动问答数据</div>
+                    </div>
+                    
+                    <!-- 问答分页 -->
+                    <div class="pagination" id="qaPagination">
+                        <button class="page-btn" id="qaPrevPage" onclick="qaPrevPage()" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <div class="page-numbers" id="qaPageNumbers">
+                            <span class="page-number active">1</span>
+                        </div>
+                        <button class="page-btn" id="qaNextPage" onclick="qaNextPage()" disabled>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 加载遮罩 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>加载中...</span>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // 当前筛选条件
+        let qaFilter_currentRange = '1day';
+        let qaFilter_currentPage = 1;
+        let qaFilter_pageSize = 20;
+        let qaFilter_totalPages = 1;
+        let qaFilter_totalCount = 0;
+        
+        // 问答详情相关
+        let qaFilter_currentStockCode = '';
+        let qaFilter_currentQAPage = 1;
+        let qaFilter_totalQAPages = 1;
+        
+        // 自选股列表
+        let qaFilter_myStocks = [];
+
+        /**
+         * 格式化时间为 YYYY-MM-DD HH:mm:ss（保持原始时间，不进行时区转换）
+         */
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '--';
+            try {
+                // 尝试直接解析字符串格式，避免时区转换问题
+                const date = new Date(dateStr);
+                
+                // 使用UTC方法获取时间，避免本地时区影响
+                const year = date.getUTCFullYear();
+                const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(date.getUTCDate()).padStart(2, '0');
+                const hours = String(date.getUTCHours()).padStart(2, '0');
+                const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+                const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            } catch {
+                return dateStr;
+            }
+        }
+
+        /**
+         * 时间范围变更处理
+         */
+        function onTimeRangeChange() {
+            const select = document.getElementById('timeRangeSelect');
+            qaFilter_currentRange = select.value;
+        }
+
+        /**
+         * 加载自选股列表
+         */
+        async function loadMyStocks() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/my_stocks`);
+                const result = await response.json();
+                if (result.success && result.data) {
+                    // 兼容两种数据格式：result.data 或 result.data.stocks
+                    const stocks = result.data.stocks || result.data;
+                    qaFilter_myStocks = stocks.map(stock => stock.code);
+                    console.log('自选股列表:', qaFilter_myStocks);
+                }
+            } catch (error) {
+                console.error('加载自选股失败:', error);
+                qaFilter_myStocks = [];
+            }
+        }
+
+        /**
+         * 判断是否为自选股
+         */
+        function isMyStock(code) {
+            return qaFilter_myStocks.includes(code);
+        }
+
+        /**
+         * 筛选互动问答
+         */
+        async function filterQA() {
+            showLoading(true);
+            
+            try {
+                // 确保当前页码有效
+                if (qaFilter_currentPage < 1) {
+                    qaFilter_currentPage = 1;
+                }
+                
+                const response = await fetch(`${API_BASE_URL}/api/qa/stocks?range=${qaFilter_currentRange}&page=${qaFilter_currentPage}&limit=${qaFilter_pageSize}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderStockList(result.data.stocks);
+                    updatePagination(result.data.total, result.data.total_pages);
+                    updateStats(result.data.total, result.data.total_qa_count);
+                } else {
+                    showToast(result.message || '筛选失败', 'error');
+                }
+            } catch (error) {
+                console.error('筛选失败:', error);
+                showToast('筛选失败，请稍后重试', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        /**
+         * 渲染股票列表
+         */
+        function renderStockList(stocks) {
+            const tbody = document.getElementById('resultBody');
+            
+            if (!stocks || stocks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">暂无符合条件的股票</td></tr>';
+                // 隐藏弹窗
+                document.getElementById('qaDetailModal').style.display = 'none';
+                return;
+            }
+            
+            // 排序：自选股排在前面，然后按最新答复时间排序
+            const sortedStocks = [...stocks].sort((a, b) => {
+                const isMyStockA = isMyStock(a.code);
+                const isMyStockB = isMyStock(b.code);
+                
+                // 自选股优先
+                if (isMyStockA && !isMyStockB) return -1;
+                if (!isMyStockA && isMyStockB) return 1;
+                
+                // 同类型按最新答复时间排序
+                const timeA = a.latest_answer_time || '';
+                const timeB = b.latest_answer_time || '';
+                return timeB.localeCompare(timeA);
+            });
+            
+            let html = '';
+            sortedStocks.forEach(stock => {
+                const isMy = isMyStock(stock.code);
+                const highlightClass = isMy ? 'highlight-row' : '';
+                html += `
+                    <tr class="${highlightClass}">
+                        <td class="text-center"><a href="stock_detail.html?code=${stock.code}" class="link">${stock.code}</a></td>
+                        <td class="text-center"><a href="stock_detail.html?code=${stock.code}" class="link">${stock.name}</a></td>
+                        <td class="text-center">${formatDateTime(stock.latest_answer_time)}</td>
+                        <td class="text-center">${stock.qa_count || 0}</td>
+                        <td class="text-center">
+                            <button class="action-btn" onclick="showQADetail('${stock.code}', '${stock.name}')">
+                                <i class="fas fa-eye"></i> 查看问答
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+            
+            // 默认显示第一条股票的问答详情
+            const firstStock = sortedStocks[0];
+            if (firstStock) {
+                showQADetail(firstStock.code, firstStock.name);
+            }
+        }
+
+        /**
+         * 更新分页信息
+         */
+        function updatePagination(total, total_pages) {
+            qaFilter_totalCount = total;
+            qaFilter_totalPages = total_pages;
+            
+            const paginationInfo = document.getElementById('paginationInfo');
+            const start = (qaFilter_currentPage - 1) * qaFilter_pageSize + 1;
+            const end = Math.min(qaFilter_currentPage * qaFilter_pageSize, total);
+            paginationInfo.innerHTML = `<i class="fas fa-list"></i><span>显示第 <strong>${start}-${end}</strong> 条，共 <strong>${total}</strong> 条</span>`;
+            
+            // 更新分页按钮状态
+            document.getElementById('prevPage').disabled = qaFilter_currentPage <= 1;
+            document.getElementById('nextPage').disabled = qaFilter_currentPage >= total_pages;
+            
+            // 更新页码
+            renderPageNumbers();
+        }
+
+        /**
+         * 渲染页码
+         */
+        function renderPageNumbers() {
+            const container = document.getElementById('pageNumbers');
+            let html = '';
+            
+            if (qaFilter_totalPages <= 7) {
+                for (let i = 1; i <= qaFilter_totalPages; i++) {
+                    html += `<button type="button" class="page-number-btn ${i === qaFilter_currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+                }
+            } else {
+                // 显示当前页附近的页码
+                html += `<button type="button" class="page-number-btn ${qaFilter_currentPage === 1 ? 'active' : ''}" onclick="goToPage(1)">1</button>`;
+                
+                if (qaFilter_currentPage > 3) {
+                    html += '<span class="page-dots">...</span>';
+                }
+                
+                const start = Math.max(2, qaFilter_currentPage - 1);
+                const end = Math.min(qaFilter_totalPages - 1, qaFilter_currentPage + 1);
+                
+                for (let i = start; i <= end; i++) {
+                    html += `<button type="button" class="page-number-btn ${i === qaFilter_currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+                }
+                
+                if (qaFilter_currentPage < qaFilter_totalPages - 2) {
+                    html += '<span class="page-dots">...</span>';
+                }
+                
+                html += `<button type="button" class="page-number-btn ${qaFilter_currentPage === qaFilter_totalPages ? 'active' : ''}" onclick="goToPage(${qaFilter_totalPages})">${qaFilter_totalPages}</button>`;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        /**
+         * 更新统计信息
+         */
+        function updateStats(totalStocks, totalQA) {
+            document.getElementById('totalStocks').textContent = totalStocks;
+            document.getElementById('totalQA').textContent = totalQA;
+        }
+
+        /**
+         * 上一页
+         */
+        function prevPage() {
+            if (qaFilter_currentPage > 1) {
+                qaFilter_currentPage--;
+                filterQA();
+            }
+        }
+
+        /**
+         * 下一页
+         */
+        function nextPage() {
+            if (qaFilter_currentPage < qaFilter_totalPages) {
+                qaFilter_currentPage++;
+                filterQA();
+            }
+        }
+
+        /**
+         * 跳转到指定页
+         */
+        function goToPage(page) {
+            if (page >= 1 && page <= qaFilter_totalPages && page !== qaFilter_currentPage) {
+                qaFilter_currentPage = page;
+                filterQA();
+            }
+        }
+
+        /**
+         * 每页条数变化
+         */
+        function onPageSizeChange() {
+            const select = document.getElementById('pageSizeSelect');
+            qaFilter_pageSize = parseInt(select.value);
+            qaFilter_currentPage = 1;
+            filterQA();
+        }
+
+        /**
+         * 重置筛选条件
+         */
+        function resetFilter() {
+            qaFilter_currentRange = '3day';
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-range="3day"]').classList.add('active');
+            filterQA();
+        }
+
+        /**
+         * 显示问答详情
+         */
+        async function showQADetail(code, name) {
+            qaFilter_currentStockCode = code;
+            qaFilter_currentQAPage = 1;
+            
+            document.getElementById('modalStockTitle').textContent = `${code} ${name} - 互动问答详情`;
+            document.getElementById('qaDetailModal').style.display = 'flex';
+            
+            await loadQADetail();
+        }
+
+        /**
+         * 加载问答详情
+         */
+        async function loadQADetail() {
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/stock/${qaFilter_currentStockCode}/qa?page=${qaFilter_currentQAPage}&limit=10`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderQADetail(result.data.qa_list);
+                    updateQAPagination(result.data.total, result.data.total_pages);
+                } else {
+                    document.getElementById('qaDetailContainer').innerHTML = '<div class="empty-state">暂无互动问答数据</div>';
+                }
+            } catch (error) {
+                console.error('加载问答详情失败:', error);
+                document.getElementById('qaDetailContainer').innerHTML = '<div class="empty-state">加载失败</div>';
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        /**
+         * 渲染问答详情
+         */
+        function renderQADetail(qaList) {
+            const container = document.getElementById('qaDetailContainer');
+            
+            if (!qaList || qaList.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无互动问答数据</div>';
+                return;
+            }
+            
+            let html = '';
+            
+            qaList.forEach((item, index) => {
+                const hasAnswer = item.answer && item.answer.trim();
+                const askTime = formatDateTime(item.ask_time);
+                const answerTime = item.answer_time ? formatDateTime(item.answer_time) : '';
+                
+                // 判断是否为最近72小时内的答复
+                const isRecent = hasAnswer && isRecentAnswer(item.answer_time);
+                
+                const qaItemClass = isRecent ? 'qa-item recent' : 'qa-item';
+                
+                html += `
+                    <div class="${qaItemClass}">
+                        <div class="qa-question-row">
+                            <span class="qa-icon question-icon">
+                                <i class="fas fa-user-circle"></i>
+                            </span>
+                            <span class="qa-label">问:</span>
+                            <span class="qa-meta">
+                                <span class="qa-ask-user">${item.ask_user || '投资者'}</span>
+                                <span class="qa-divider">|</span>
+                                <span class="qa-ask-time">${askTime}</span>
+                            </span>
+                            <span class="qa-content-text">${item.question || '--'}</span>
+                        </div>
+                        
+                        ${hasAnswer ? `
+                        <div class="qa-answer-row">
+                            <span class="qa-icon answer-icon">
+                                <i class="fas fa-building"></i>
+                            </span>
+                            <span class="qa-label">答:</span>
+                            <span class="qa-meta">
+                                <span class="qa-answer-source">${item.code || '公司'}</span>
+                                ${answerTime ? `<span class="qa-divider">|</span><span class="qa-answer-time">${answerTime}</span>` : ''}
+                            </span>
+                            <span class="qa-content-text">${item.answer}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        /**
+         * 更新问答分页
+         */
+        function updateQAPagination(total, total_pages) {
+            qaFilter_totalQAPages = total_pages;
+            
+            document.getElementById('qaPrevPage').disabled = qaFilter_currentQAPage <= 1;
+            document.getElementById('qaNextPage').disabled = qaFilter_currentQAPage >= total_pages;
+            
+            // 更新页码
+            const container = document.getElementById('qaPageNumbers');
+            let html = '';
+            
+            if (qaFilter_totalQAPages <= 5) {
+                for (let i = 1; i <= qaFilter_totalQAPages; i++) {
+                    html += `<span class="page-number ${i === qaFilter_currentQAPage ? 'active' : ''}" onclick="qaGoToPage(${i})">${i}</span>`;
+                }
+            } else {
+                html += `<span class="page-number ${qaFilter_currentQAPage === 1 ? 'active' : ''}" onclick="qaGoToPage(1)">1</span>`;
+                
+                if (qaFilter_currentQAPage > 2) {
+                    html += '<span class="page-dots">...</span>';
+                }
+                
+                const start = Math.max(2, qaFilter_currentQAPage - 1);
+                const end = Math.min(qaFilter_totalQAPages - 1, qaFilter_currentQAPage + 1);
+                
+                for (let i = start; i <= end; i++) {
+                    html += `<span class="page-number ${i === qaFilter_currentQAPage ? 'active' : ''}" onclick="qaGoToPage(${i})">${i}</span>`;
+                }
+                
+                if (qaFilter_currentQAPage < qaFilter_totalQAPages - 1) {
+                    html += '<span class="page-dots">...</span>';
+                }
+                
+                html += `<span class="page-number ${qaFilter_currentQAPage === qaFilter_totalQAPages ? 'active' : ''}" onclick="qaGoToPage(${qaFilter_totalQAPages})">${qaFilter_totalQAPages}</span>`;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        /**
+         * 问答上一页
+         */
+        function qaPrevPage() {
+            if (qaFilter_currentQAPage > 1) {
+                qaFilter_currentQAPage--;
+                loadQADetail();
+            }
+        }
+
+        /**
+         * 问答下一页
+         */
+        function qaNextPage() {
+            if (qaFilter_currentQAPage < qaFilter_totalQAPages) {
+                qaFilter_currentQAPage++;
+                loadQADetail();
+            }
+        }
+
+        /**
+         * 问答跳转到指定页
+         */
+        function qaGoToPage(page) {
+            if (page >= 1 && page <= qaFilter_totalQAPages && page !== qaFilter_currentQAPage) {
+                qaFilter_currentQAPage = page;
+                loadQADetail();
+            }
+        }
+
+        /**
+         * 关闭问答详情弹窗
+         */
+        function closeQADetailModal() {
+            document.getElementById('qaDetailModal').style.display = 'none';
+            qaFilter_currentStockCode = '';
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 先加载自选股列表
+            await loadMyStocks();
+            
+            // 初始化筛选
+            filterQA();
+        });
+    </script>
+</body>
+</html>

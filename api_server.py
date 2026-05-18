@@ -1596,6 +1596,74 @@ def fetch_stock_qa(code):
         return jsonify({'success': False, 'message': str(e), 'data': None}), 500
 
 
+
+
+# ============================================================
+# 互动问答筛选API接口
+# ============================================================
+
+@app.route('/api/qa/stocks', methods=['GET'])
+def get_qa_stocks():
+    """
+    获取近期有互动问答答复的股票列表
+    
+    参数:
+        range: 时间范围 (today/1day/2day/3day)
+        page: 页码，默认1
+        limit: 每页条数，默认20
+    """
+    time_range = request.args.get('range', 'today')
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 20, type=int)
+    
+    from datetime import datetime, timedelta
+    today = datetime.now().date()
+    
+    # 计算开始日期：
+    # today = 今天
+    # 1day = 近 1 日 = 昨天 + 今天（往前推 1 天）
+    # 2day = 近 2 日 = 前天 + 昨天 + 今天（往前推 2 天）
+    # 3day = 近 3 日 = 大前天 + 前天 + 昨天 + 今天（往前推 3 天）
+    days_map = {
+        'today': 0,      # 今天
+        '1day': 1,       # 近 1 日 = 往前推 1 天（昨天 + 今天）
+        '2day': 2,       # 近 2 日 = 往前推 2 天（前天 + 昨天 + 今天）
+        '3day': 3        # 近 3 日 = 往前推 3 天（大前天 + 前天 + 昨天 + 今天）
+    }
+    days = days_map.get(time_range, 0)
+    start_date = today - timedelta(days=days)
+    
+    offset = (page - 1) * limit
+    
+    try:
+        db_client = MySQLClient(MYSQL_CONFIG)
+        
+        stocks = db_client.get_stocks_with_recent_qa(start_date, limit, offset)
+        total = db_client.get_stocks_with_recent_qa_count(start_date)
+        total_qa_count = db_client.get_qa_count_by_date_range(start_date)
+        
+        db_client.close()
+        
+        total_pages = (total + limit - 1) // limit
+        
+        return jsonify({
+            'success': True,
+            'message': '获取成功',
+            'data': {
+                'stocks': stocks,
+                'total': total,
+                'total_pages': total_pages,
+                'total_qa_count': total_qa_count,
+                'current_page': page,
+                'limit': limit,
+                'range': time_range
+            }
+        })
+    except Exception as e:
+        logger.error(f"获取互动问答股票列表失败: {e}")
+        return jsonify({'success': False, 'message': str(e), 'data': None}), 500
+
+
 # ============================================================
 # PS市销率科技股筛选API接口
 # ============================================================

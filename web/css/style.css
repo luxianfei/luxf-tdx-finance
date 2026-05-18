@@ -2013,61 +2013,125 @@ div.Pfosts.tosan,
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 8px;
-    margin-top: 16px;
+    gap: 10px;
+    margin-top: 20px;
 }
 
 .pagination-btn {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
     color: var(--text-secondary);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: var(--transition);
+    transition: all 0.25s ease;
+    font-size: 1.2rem;
 }
 
 .pagination-btn:hover:not(:disabled) {
     background: var(--primary-color);
     color: white;
     border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
 }
 
 .pagination-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: not-allowed;
 }
 
 .pagination-numbers {
     display: flex;
-    gap: 4px;
+    gap: 8px;
 }
 
 .pagination-number {
-    min-width: 36px;
-    height: 36px;
+    min-width: 44px;
+    height: 44px;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: 0.85rem;
-    transition: var(--transition);
+    font-size: 1rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
 }
 
 .pagination-number:hover {
     border-color: var(--primary-color);
     color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2);
 }
 
 .pagination-number.active {
     background: var(--primary-color);
     border-color: var(--primary-color);
     color: white;
+    font-weight: 600;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.4);
+}
+
+/* 表格内容居中 */
+.text-center {
+    text-align: center;
+    vertical-align: middle !important;
+}
+
+/* 问答筛选页面页码按钮 */
+.page-number-btn {
+    min-width: 44px;
+    height: 44px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0 12px;
+    margin: 0 4px;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-number-btn:hover:not(.active) {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.2);
+}
+
+.page-number-btn.active {
+    background: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.4);
+}
+
+.page-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: 44px;
+    color: var(--text-tertiary);
+    font-size: 1rem;
 }
 
 .pagination-ellipsis {
