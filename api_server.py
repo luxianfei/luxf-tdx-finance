@@ -497,6 +497,114 @@ def update_all_qa_data():
         }), 500
 
 
+@app.route('/api/update/my_stocks_qa_data', methods=['POST'])
+def update_my_stocks_qa_data():
+    """更新自选股互动问答数据（通过同花顺接口）"""
+    if update_status['running']:
+        return jsonify({
+            'success': False,
+            'message': '正在执行更新，请等待完成',
+            'data': None
+        }), 400
+    
+    try:
+        from fetchers.luxf_fetch_ths_hudong import fetch_qa_data
+        
+        update_status['running'] = True
+        update_status['progress'] = 0
+        update_status['message'] = '开始更新自选股互动信息...'
+        
+        # 获取自选股列表（核心池和观察池）
+        db_client = MySQLClient(MYSQL_CONFIG)
+        sql = "SELECT code, name FROM my_stock"
+        stocks = db_client.query_all(sql)
+        db_client.close()
+        
+        if not stocks:
+            update_status['running'] = False
+            return jsonify({
+                'success': False,
+                'message': '自选股列表为空',
+                'data': None
+            })
+        
+        total = len(stocks)
+        success_count = 0
+        fail_count = 0
+        total_qa_count = 0  # 累计问答记录数
+        failed_stocks = []
+        
+        try:
+            for i, stock in enumerate(stocks, 1):
+                code = stock['code']
+                name = stock['name']
+                
+                try:
+                    update_status['message'] = f'正在更新股票 {code} ({name}) 的互动信息 [{i}/{total}]'
+                    update_status['progress'] = (i / total) * 100
+                    
+                    # 调用抓取互动问答数据的方法
+                    qa_data = fetch_qa_data(code, fetch_all=False, max_years=3)
+                    
+                    if qa_data and len(qa_data) > 0:
+                        # 保存到数据库
+                        db_client = MySQLClient(MYSQL_CONFIG)
+                        count = db_client.batch_insert_stock_qa(qa_data)
+                        db_client.close()
+                        
+                        success_count += 1
+                        total_qa_count += len(qa_data)  # 累计问答记录数
+                        update_status['message'] = f'正在更新股票 {code} ({name}) 的互动信息 [{i}/{total}]，新增 {len(qa_data)} 条问答'
+                        logger.info(f"成功更新股票 {code} ({name}) 的互动问答数据，新增 {count} 条")
+                    else:
+                        fail_count += 1
+                        failed_stocks.append(f"{code} ({name})")
+                        logger.warning(f"未能获取股票 {code} ({name}) 的互动问答数据")
+                    
+                    # 添加延迟避免请求过快
+                    import time
+                    time.sleep(0.5)
+                    
+                except Exception as e:
+                    fail_count += 1
+                    failed_stocks.append(f"{code} ({name})")
+                    logger.error(f"更新股票 {code} ({name}) 的互动问答数据失败: {e}")
+            
+            message = f"自选股互动信息更新完成！成功 {success_count} 只，失败 {fail_count} 只，共更新 {total_qa_count} 条问答记录"
+            if failed_stocks:
+                message += f"，失败股票: {', '.join(failed_stocks[:10])}"
+                if len(failed_stocks) > 10:
+                    message += f"...(共 {len(failed_stocks)} 只)"
+            
+            update_status['progress'] = 100
+            update_status['message'] = message
+            update_status['running'] = False
+            
+            return jsonify({
+                'success': True,
+                'message': message,
+                'data': {
+                    'total': total,
+                    'success': success_count,
+                    'failed': fail_count,
+                    'total_qa_count': total_qa_count,
+                    'failed_stocks': failed_stocks
+                }
+            })
+            
+        finally:
+            update_status['running'] = False
+            
+    except Exception as e:
+        logger.error(f"更新自选股互动信息失败: {e}")
+        update_status['running'] = False
+        return jsonify({
+            'success': False,
+            'message': str(e),
+            'data': None
+        }), 500
+
+
 @app.route('/api/update/status', methods=['GET'])
 def get_update_status():
     return jsonify({
