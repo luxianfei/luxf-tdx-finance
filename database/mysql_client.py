@@ -773,12 +773,12 @@ class MySQLClient:
         """
         sql = """
             SELECT 
-                sl.code, 
-                sl.name, 
+                sq.code, 
+                COALESCE(sl.name, '') as name, 
                 MAX(sq.answer_time) as latest_answer_time,
                 COUNT(sq.id) as qa_count
             FROM stock_qa sq
-            JOIN stock_list sl ON sq.code = sl.code
+            LEFT JOIN stock_list sl ON sq.code = sl.code
             WHERE DATE(sq.answer_time) >= %s
             GROUP BY sq.code, sl.name
             ORDER BY MAX(sq.answer_time) DESC

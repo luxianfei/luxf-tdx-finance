@@ -543,23 +543,57 @@ def update_my_stocks_qa_data():
                     update_status['message'] = f'正在更新股票 {code} ({name}) 的互动信息 [{i}/{total}]'
                     update_status['progress'] = (i / total) * 100
                     
-                    # 调用抓取互动问答数据的方法
-                    qa_data = fetch_qa_data(code, fetch_all=False, max_years=3)
+                    # 获取最新回答时间（用于增量更新）
+                    db_client = MySQLClient(MYSQL_CONFIG)
+                    latest_time = db_client.get_latest_answer_time(code)
+                    db_client.close()
                     
-                    if qa_data and len(qa_data) > 0:
+                    logger.info(f"股票 {code} 最新回答时间: {latest_time}")
+                    
+                    # 调用抓取互动问答数据的方法（fetch_all=True 获取所有数据）
+                    qa_data = fetch_qa_data(code, fetch_all=True, max_years=3)
+                    
+                    if not qa_data or len(qa_data) == 0:
+                        # 没有获取到数据，可能是该股票确实没有新数据，不算失败
+                        success_count += 1
+                        logger.info(f"股票 {code} ({name}) 未采集到互动问答数据")
+                        continue
+                    
+                    # 增量更新：只保留比最新时间新的数据
+                    new_data = []
+                    if latest_time:
+                        from datetime import datetime
+                        try:
+                            latest_dt = datetime.strptime(str(latest_time), '%Y-%m-%d %H:%M:%S')
+                            
+                            for item in qa_data:
+                                answer_time = item.get('answer_time', '')
+                                if answer_time:
+                                    try:
+                                        answer_dt = datetime.strptime(answer_time, '%Y-%m-%d %H:%M:%S')
+                                        if answer_dt > latest_dt:
+                                            new_data.append(item)
+                                    except:
+                                        continue
+                        except:
+                            new_data = qa_data
+                    else:
+                        new_data = qa_data
+                    
+                    if new_data and len(new_data) > 0:
                         # 保存到数据库
                         db_client = MySQLClient(MYSQL_CONFIG)
-                        count = db_client.batch_insert_stock_qa(qa_data)
+                        count = db_client.batch_insert_stock_qa(new_data)
                         db_client.close()
                         
                         success_count += 1
-                        total_qa_count += len(qa_data)  # 累计问答记录数
-                        update_status['message'] = f'正在更新股票 {code} ({name}) 的互动信息 [{i}/{total}]，新增 {len(qa_data)} 条问答'
+                        total_qa_count += len(new_data)  # 累计新增问答记录数
+                        update_status['message'] = f'正在更新股票 {code} ({name}) 的互动信息 [{i}/{total}]，新增 {len(new_data)} 条问答'
                         logger.info(f"成功更新股票 {code} ({name}) 的互动问答数据，新增 {count} 条")
                     else:
-                        fail_count += 1
-                        failed_stocks.append(f"{code} ({name})")
-                        logger.warning(f"未能获取股票 {code} ({name}) 的互动问答数据")
+                        # 没有新增数据也算成功
+                        success_count += 1
+                        logger.info(f"股票 {code} ({name}) 没有新增的互动问答数据")
                     
                     # 添加延迟避免请求过快
                     import time
@@ -570,7 +604,7 @@ def update_my_stocks_qa_data():
                     failed_stocks.append(f"{code} ({name})")
                     logger.error(f"更新股票 {code} ({name}) 的互动问答数据失败: {e}")
             
-            message = f"自选股互动信息更新完成！成功 {success_count} 只，失败 {fail_count} 只，共更新 {total_qa_count} 条问答记录"
+            message = f"自选股互动信息更新完成！成功 {success_count} 只，失败 {fail_count} 只，共新增 {total_qa_count} 条问答记录"
             if failed_stocks:
                 message += f"，失败股票: {', '.join(failed_stocks[:10])}"
                 if len(failed_stocks) > 10:
