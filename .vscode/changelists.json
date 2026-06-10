@@ -4,10 +4,6 @@
       "name": "Default",
       "files": [
         "api_server.py",
-        "database/__pycache__/mysql_client.cpython-313.pyc",
-        "database/mysql_client.py",
-        ".vscode/changelists.json",
-        "web/css/style.css",
         "web/qa_filter.html"
       ]
     }

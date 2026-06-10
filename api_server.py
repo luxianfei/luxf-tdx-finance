@@ -1750,7 +1750,7 @@ def get_qa_stocks():
     获取近期有互动问答答复的股票列表
     
     参数:
-        range: 时间范围 (today/1day/2day/3day)
+        range: 时间范围 (today/1day/2day/3day/7day/15day/30day)
         page: 页码，默认1
         limit: 每页条数，默认20
     """
@@ -1770,7 +1770,10 @@ def get_qa_stocks():
         'today': 0,      # 今天
         '1day': 1,       # 近 1 日 = 往前推 1 天（昨天 + 今天）
         '2day': 2,       # 近 2 日 = 往前推 2 天（前天 + 昨天 + 今天）
-        '3day': 3        # 近 3 日 = 往前推 3 天（大前天 + 前天 + 昨天 + 今天）
+        '3day': 3,       # 近 3 日 = 往前推 3 天（大前天 + 前天 + 昨天 + 今天）
+        '7day': 7,       # 近 7 日 = 往前推 7 天
+        '15day': 15,     # 近 15 日 = 往前推 15 天
+        '30day': 30      # 近 30 日 = 往前推 30 天
     }
     days = days_map.get(time_range, 0)
     start_date = today - timedelta(days=days)
